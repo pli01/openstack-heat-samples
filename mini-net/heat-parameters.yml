@@ -1,0 +1,5 @@
+parameters:
+  image_id: 168f7c6b-20a6-4a4e-8052-d1200aa36a1e
+  public_net: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+  flavor: s1.cw.small-1
+  key_name: user1
