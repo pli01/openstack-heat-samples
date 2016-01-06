@@ -1,0 +1,11 @@
+parameters:
+  key_name: user1
+  instance1_image: 168f7c6b-20a6-4a4e-8052-d1200aa36a1e
+  instance1_flavor: s1.cw.small-1
+  instance1_vol_size: 50
+  instance1_vol_type: standard
+  public_net_id: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+  private_net_id: d6fdd78c-021a-48f5-b65e-b6edb706711a
+  private_subnet_id: 1f00681f-1243-42be-b32e-44359d251bb3
+  vpn_cidr: 192.168.111.0/24
+  remote_net_cidr: 172.16.0.0/24

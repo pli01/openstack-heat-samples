@@ -1,0 +1,286 @@
+heat_template_version: 2013-05-23
+
+description: >
+  Generic template 1 VM with boot on volume
+  1 server front with SSH/HTTP/HTTPS open
+
+parameters:
+
+  key_name:
+    type: string
+    description: Name of keypair to assign to servers
+
+  instance1_image:
+    type: string
+    description: Name of image to use for instance1 server
+  instance1_flavor:
+    type: string
+    description: Flavor to use for instance1 server
+  instance1_vol_size:
+    type: number
+    description: The size of the Cinder volume for instance1 server
+  instance1_vol_type:
+    type: string
+    description: The volume type of the Cinder volume for instance1 server
+
+  public_net_id:
+    type: string
+    description: >
+      ID of public network for which floating IP addresses will be allocated
+  private_net_id:
+    type: string
+    description: ID of private network into which servers get deployed
+  private_subnet_id:
+    type: string
+    description: ID of private sub network into which servers get deployed
+
+  vpn_cidr:
+    type: string
+    default: 10.8.0.0/24
+    description: OpenVPN CIDR. It has to be unique and must not overlap the CIDR of your private_net_id, public_net_id, nor of your remote_net_cidr connecting to the VPN.
+  remote_net_cidr:
+    type: string
+    default: 10.0.0.0/24
+    description: Remote CIDR. It is the CIDR of the network conecting to the VPN (e.g. your Office network).
+
+resources:
+
+##############
+# INSTANCE 1 #
+##############
+
+  Instance1_Server:
+    type: OS::Nova::Server
+    depends_on: Instance1_root_vol
+    properties:
+      block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : Instance1_root_vol }, delete_on_termination : "true" }]
+      flavor: { get_param: instance1_flavor }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: Instance1_port }
+      user_data_format: RAW
+      user_data:
+        get_resource: Instance1_UserData
+
+  Instance1_UserData:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        preserve_hostname: true
+        manage_etc_hosts: false
+        write_files:
+        - path: /root/launch.sh
+          content:
+            str_replace:
+              template: |
+                #!/bin/bash
+                set -x
+                echo "Preparing the instance to be ready to run with Heat..."
+                echo "######################################################"
+                echo ""
+                export DEBIAN_FRONTEND=noninteractive
+                apt-get -qqy update
+                apt-get -qqy upgrade
+                apt-get -f -y -q install git python-setuptools ipcalc wget
+                apt-get -f -y -q install python-argparse cloud-init python-psutil python-pip
+                apt-get -f -y -q install apache2
+                a2dismod ssl
+                a2dissite default-ssl 
+                update-rc.d apache2 enable
+                service apache2 restart
+
+                echo "Installing and configuring OpenVPN..."
+                echo "###################################"
+                echo ""
+                apt-get -f -y -q install openvpn easy-rsa
+                # TODO: get the floating IP from heat and avoid the following HACK
+                # when http://docs.openstack.org/developer/heat/template_guide/
+                # will be a little bit more readable.
+                export FLOATING_IP=%public_ip%
+                export OVPN_IP=$(ipcalc -nb %vpncidr% | grep ^Address | awk '{print $2}')
+                export OVPN_MASK=$(ipcalc -nb %vpncidr% | grep ^Netmask | awk '{print $2}')
+                export PRIVATE_IP_CIDR=$(ip addr show dev eth0 | grep 'inet .*$' | awk '{print $2}')
+                export PRIVATE_NETWORK_CIDR=$(ipcalc -nb $PRIVATE_IP_CIDR | grep ^Network | awk '{print $2}')
+                export PRIVATE_NETWORK_IP=$(ipcalc -nb $PRIVATE_NETWORK_CIDR | grep ^Address | awk '{print $2}')
+                export PRIVATE_NETWORK_MASK=$(ipcalc -nb $PRIVATE_NETWORK_CIDR | grep ^Netmask | awk '{print $2}')
+                export REMOTE_NETWORK_IP=$(ipcalc -nb %remotenetcidr% | grep ^Address | awk '{print $2}')
+                export REMOTE_NETWORK_MASK=$(ipcalc -nb %remotenetcidr% | grep ^Netmask | awk '{print $2}')
+    
+                mkdir -p /etc/openvpn/ccd
+    
+                cat > /etc/openvpn/route-up.sh <<EOF
+                #!/bin/bash
+                /sbin/sysctl -n net.ipv4.conf.all.forwarding > /var/log/openvpn/net.ipv4.conf.all.forwarding.bak
+                /sbin/sysctl net.ipv4.conf.all.forwarding=1
+                EOF
+    
+                # Down script
+                cat > /etc/openvpn/down.sh <<EOF
+                #!/bin/bash
+                FORWARDING=\$(cat /var/log/openvpn/net.ipv4.conf.all.forwarding.bak)
+                echo "restoring net.ipv4.conf.all.forwarding=\$FORWARDING"
+                /sbin/sysctl net.ipv4.conf.all.forwarding=\$FORWARDING
+                EOF
+    
+                chmod 755 /etc/openvpn/down.sh /etc/openvpn/route-up.sh
+    
+                # OpenVPN server configuration
+                cat > /etc/openvpn/server.conf <<EOF
+                mode server
+                dev tun
+                port 443
+                proto tcp
+                port-share $FLOATING_IP 4443
+                ca /etc/openvpn/ca.crt
+                cert /etc/openvpn/server.crt
+                key /etc/openvpn/server.key
+                crl-verify /etc/openvpn/crl.pem
+                dh /etc/openvpn/dh2048.pem
+                server $OVPN_IP $OVPN_MASK
+                ifconfig-pool-persist ipp.txt
+                push "route $PRIVATE_NETWORK_IP $PRIVATE_NETWORK_MASK"
+                client-config-dir /etc/openvpn/ccd
+                route $REMOTE_NETWORK_IP $REMOTE_NETWORK_MASK
+                keepalive 10 120
+                tls-auth ta.key 0 # This file is secret
+                persist-key
+                persist-tun
+                comp-lzo
+                status /var/log/openvpn/openvpn-status.log
+                log /var/log/openvpn/openvpn.log
+                verb 3
+                script-security 2
+                route-up /etc/openvpn/route-up.sh
+                down /etc/openvpn/down.sh
+                EOF
+    
+                # OpenVPN server route towards the client
+                cat > /etc/openvpn/ccd/client <<EOF
+                iroute $REMOTE_NETWORK_IP $REMOTE_NETWORK_MASK
+                EOF
+    
+                # Sample configuration for client
+                cat > /tmp/openvpn.template <<EOF
+                client
+                dev tun
+                proto tcp
+                remote $FLOATING_IP 443
+                resolv-retry infinite
+                nobind
+                user nobody
+                group nogroup
+                persist-key
+                persist-tun
+                ca keys/ca.crt
+                cert keys/client.crt
+                key keys/client.key
+                ns-cert-type server
+                tls-auth keys/ta.key 1
+                comp-lzo
+                verb 3
+                EOF
+    
+                mkdir /etc/openvpn/easy-rsa
+                cp -r /usr/share/easy-rsa /etc/openvpn/
+                cd /etc/openvpn/easy-rsa
+                ln -s openssl-1.0.0.cnf openssl.cnf
+                source vars
+                ./clean-all
+                ./build-dh
+                KEY_EMAIL=ca@openvpn ./pkitool --initca
+                KEY_EMAIL=server@pilgrim ./pkitool --server server
+                KEY_EMAIL=client@pilgrim ./pkitool client
+                KEY_EMAIL=revoked@pilgrim ./pkitool revoked
+                ./revoke-full revoked  # Generates a crl.pem revocation list
+                openvpn --genkey --secret keys/ta.key
+                ln keys/{ca.crt,server.crt,server.key,dh2048.pem,crl.pem,ta.key} /etc/openvpn/
+                mv /tmp/openvpn.template ./client.conf
+                tar -cvjpf vpnaccess.tar.bz2 client.conf keys/ca.crt keys/client.key keys/client.crt keys/ta.key
+                cp vpnaccess.tar.bz2 /home/cloud/
+                cp vpnaccess.tar.bz2 /var/www/html/
+                chown cloud:cloud /home/cloud/vpnaccess.tar.bz2
+                mkdir -p /var/log/openvpn
+                service openvpn start
+              params:
+                $public_ip$: { get_resource: Instance1_floating_ip }
+
+          owner: root:root
+          permissions: '0755'
+
+        bootcmd:
+          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
+          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
+
+        runcmd:
+          - /root/launch.sh
+          - date > /var/www/html/ok.html
+
+  Instance1_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_net_id }
+      fixed_ips:
+        - subnet_id: { get_param: private_subnet_id }
+      security_groups: [{ get_resource: Instance1_security_group }]
+
+  Instance1_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net_id }
+      port_id: { get_resource: Instance1_port }
+
+  Instance1_security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: Add security group rules for server
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 80
+          port_range_max: 80
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 443
+          port_range_max: 443
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: icmp
+
+  Instance1_root_vol:
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: instance1_vol_size }
+      image: { get_param: instance1_image }
+      volume_type: { get_param: instance1_vol_type }
+
+  SwiftContainer:
+    type: OS::Swift::Container
+
+outputs:
+  Instance1_private_ip:
+    description: Instance1 private IP address
+    value: { get_attr: [ Instance1_Server, first_address ] }
+  Instance1_public_ip:
+    description: Instance1 public IP address
+    value: { get_attr: [ Instance1_floating_ip, floating_ip_address ] }
+  Instance1_Server_id:
+    description: Instance1 nova ressource id
+    value: { get_resource: Instance1_Server }
+  Instance1_port_id:
+    description: Instance1 port id
+    value: { get_resource: Instance1_port }
+  Instance1_security_group_id:
+    description: Instance1 security id
+    value: { get_resource: Instance1_security_group }
+  Instance1_root_vol_id:
+    description: Instance1 cinder volume id
+    value: { get_resource: Instance1_root_vol }
+  Instance1_floating_ip_id:
+    description: Instance1 floating ip id
+    value: { get_resource: Instance1_floating_ip }
+  Bucket_domain:
+    description: "Domain of Swift host"
+    value: { get_attr: [SwiftContainer, DomainName] }
