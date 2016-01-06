@@ -44,6 +44,10 @@ parameters:
     description: Remote CIDR. It is the CIDR of the network conecting to the VPN (e.g. your Office network).
 
 resources:
+  random_string:
+    type: OS::Heat::RandomString
+    properties:
+      length: 128
 
 ##############
 # INSTANCE 1 #
@@ -209,7 +213,7 @@ resources:
                 mv /tmp/openvpn.template ./client.conf
                 tar -cvjpf vpnaccess.tar.bz2 client.conf keys/ca.crt keys/client.key keys/client.crt keys/ta.key
                 cp vpnaccess.tar.bz2 /home/cloud/
-                cp vpnaccess.tar.bz2 /var/www/html/
+                cp vpnaccess.tar.bz2 /var/www/html/$random_string$.tar.bz2
                 chown cloud:cloud /home/cloud/vpnaccess.tar.bz2
                 mkdir -p /var/log/openvpn
                 systemctl daemon-reload
@@ -218,6 +222,7 @@ resources:
                 $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
                 $vpncidr$: { get_param: vpn_cidr }
                 $remotenetcidr$: { get_param: remote_net_cidr }
+                $random_string$: {get_attr: [random_string, value]}
 
           owner: root:root
           permissions: '0755'
@@ -275,6 +280,14 @@ resources:
     type: OS::Swift::Container
 
 outputs:
+  Instance1_random_string:
+    description: Instance1 random string
+    value:
+      str_replace:
+        template: http://$host/$randomstring.tar.bz2
+        params:
+          $host: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+          $randomstring: { get_attr: [ random_string, value ] }
   Instance1_private_ip:
     description: Instance1 private IP address
     value: { get_attr: [ Instance1_Server, first_address ] }
