@@ -96,15 +96,15 @@ resources:
                 # TODO: get the floating IP from heat and avoid the following HACK
                 # when http://docs.openstack.org/developer/heat/template_guide/
                 # will be a little bit more readable.
-                export FLOATING_IP=%public_ip%
-                export OVPN_IP=$(ipcalc -nb %vpncidr% | grep ^Address | awk '{print $2}')
-                export OVPN_MASK=$(ipcalc -nb %vpncidr% | grep ^Netmask | awk '{print $2}')
+                export FLOATING_IP=$public_ip$
+                export OVPN_IP=$(ipcalc -nb $vpncidr$ | grep ^Address | awk '{print $2}')
+                export OVPN_MASK=$(ipcalc -nb $vpncidr$ | grep ^Netmask | awk '{print $2}')
                 export PRIVATE_IP_CIDR=$(ip addr show dev eth0 | grep 'inet .*$' | awk '{print $2}')
                 export PRIVATE_NETWORK_CIDR=$(ipcalc -nb $PRIVATE_IP_CIDR | grep ^Network | awk '{print $2}')
                 export PRIVATE_NETWORK_IP=$(ipcalc -nb $PRIVATE_NETWORK_CIDR | grep ^Address | awk '{print $2}')
                 export PRIVATE_NETWORK_MASK=$(ipcalc -nb $PRIVATE_NETWORK_CIDR | grep ^Netmask | awk '{print $2}')
-                export REMOTE_NETWORK_IP=$(ipcalc -nb %remotenetcidr% | grep ^Address | awk '{print $2}')
-                export REMOTE_NETWORK_MASK=$(ipcalc -nb %remotenetcidr% | grep ^Netmask | awk '{print $2}')
+                export REMOTE_NETWORK_IP=$(ipcalc -nb $remotenetcidr$ | grep ^Address | awk '{print $2}')
+                export REMOTE_NETWORK_MASK=$(ipcalc -nb $remotenetcidr$ | grep ^Netmask | awk '{print $2}')
     
                 mkdir -p /etc/openvpn/ccd
     
@@ -129,29 +129,37 @@ resources:
                 mode server
                 dev tun
                 port 443
+                max-clients 4
                 proto tcp
                 port-share $FLOATING_IP 4443
+                server $OVPN_IP $OVPN_MASK
+                keepalive 10 120
+                persist-key
+                persist-tun
+                comp-lzo
+
                 ca /etc/openvpn/ca.crt
                 cert /etc/openvpn/server.crt
                 key /etc/openvpn/server.key
                 crl-verify /etc/openvpn/crl.pem
                 dh /etc/openvpn/dh2048.pem
-                server $OVPN_IP $OVPN_MASK
-                ifconfig-pool-persist ipp.txt
+                tls-auth /etc/openvpn/ta.key 0
+                tls-server
+
                 push "route $PRIVATE_NETWORK_IP $PRIVATE_NETWORK_MASK"
-                client-config-dir /etc/openvpn/ccd
+                ifconfig-pool-persist ipp.txt
                 route $REMOTE_NETWORK_IP $REMOTE_NETWORK_MASK
-                keepalive 10 120
-                tls-auth ta.key 0 # This file is secret
-                persist-key
-                persist-tun
-                comp-lzo
-                status /var/log/openvpn/openvpn-status.log
-                log /var/log/openvpn/openvpn.log
-                verb 3
                 script-security 2
                 route-up /etc/openvpn/route-up.sh
                 down /etc/openvpn/down.sh
+                mssfix 1300
+
+                client-to-client
+                client-config-dir /etc/openvpn/ccd
+
+                status /var/log/openvpn/openvpn-status.log
+                verb 3
+                log /var/log/openvpn/openvpn.log
                 EOF
     
                 # OpenVPN server route towards the client
@@ -200,9 +208,12 @@ resources:
                 cp vpnaccess.tar.bz2 /var/www/html/
                 chown cloud:cloud /home/cloud/vpnaccess.tar.bz2
                 mkdir -p /var/log/openvpn
-                service openvpn start
+                systemctl daemon-reload
+                service openvpn restart
               params:
-                $public_ip$: { get_resource: Instance1_floating_ip }
+                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+                $vpncidr$: { get_param: vpn_cidr }
+                $remotenetcidr$: { get_param: remote_net_cidr }
 
           owner: root:root
           permissions: '0755'
