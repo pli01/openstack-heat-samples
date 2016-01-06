@@ -40,7 +40,7 @@ parameters:
     description: OpenVPN CIDR. It has to be unique and must not overlap the CIDR of your private_net_id, public_net_id, nor of your remote_net_cidr connecting to the VPN.
   remote_net_cidr:
     type: string
-    default: 10.0.0.0/24
+    default: ''
     description: Remote CIDR. It is the CIDR of the network conecting to the VPN (e.g. your Office network).
 
 resources:
@@ -103,8 +103,10 @@ resources:
                 export PRIVATE_NETWORK_CIDR=$(ipcalc -nb $PRIVATE_IP_CIDR | grep ^Network | awk '{print $2}')
                 export PRIVATE_NETWORK_IP=$(ipcalc -nb $PRIVATE_NETWORK_CIDR | grep ^Address | awk '{print $2}')
                 export PRIVATE_NETWORK_MASK=$(ipcalc -nb $PRIVATE_NETWORK_CIDR | grep ^Netmask | awk '{print $2}')
+                if [ ! -z "$remotenetcidr$" ] ; then
                 export REMOTE_NETWORK_IP=$(ipcalc -nb $remotenetcidr$ | grep ^Address | awk '{print $2}')
                 export REMOTE_NETWORK_MASK=$(ipcalc -nb $remotenetcidr$ | grep ^Netmask | awk '{print $2}')
+                fi
     
                 mkdir -p /etc/openvpn/ccd
     
@@ -112,6 +114,7 @@ resources:
                 #!/bin/bash
                 /sbin/sysctl -n net.ipv4.conf.all.forwarding > /var/log/openvpn/net.ipv4.conf.all.forwarding.bak
                 /sbin/sysctl net.ipv4.conf.all.forwarding=1
+                /sbin/iptables -t nat -A POSTROUTING -s $OVPN_IP/$OVPN_MASK -o eth0 -j MASQUERADE
                 EOF
     
                 # Down script
@@ -120,6 +123,7 @@ resources:
                 FORWARDING=\$(cat /var/log/openvpn/net.ipv4.conf.all.forwarding.bak)
                 echo "restoring net.ipv4.conf.all.forwarding=\$FORWARDING"
                 /sbin/sysctl net.ipv4.conf.all.forwarding=\$FORWARDING
+                /sbin/iptables -t nat -D POSTROUTING -s $OVPN_IP/$OVPN_MASK -o eth0 -j MASQUERADE
                 EOF
     
                 chmod 755 /etc/openvpn/down.sh /etc/openvpn/route-up.sh
@@ -148,7 +152,7 @@ resources:
 
                 push "route $PRIVATE_NETWORK_IP $PRIVATE_NETWORK_MASK"
                 ifconfig-pool-persist ipp.txt
-                route $REMOTE_NETWORK_IP $REMOTE_NETWORK_MASK
+                #route $REMOTE_NETWORK_IP $REMOTE_NETWORK_MASK
                 script-security 2
                 route-up /etc/openvpn/route-up.sh
                 down /etc/openvpn/down.sh
@@ -164,7 +168,7 @@ resources:
     
                 # OpenVPN server route towards the client
                 cat > /etc/openvpn/ccd/client <<EOF
-                iroute $REMOTE_NETWORK_IP $REMOTE_NETWORK_MASK
+                #iroute $REMOTE_NETWORK_IP $REMOTE_NETWORK_MASK
                 EOF
     
                 # Sample configuration for client
