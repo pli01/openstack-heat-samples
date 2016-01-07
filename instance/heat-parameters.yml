@@ -1,0 +1,8 @@
+parameters:
+  key_name: user1
+  instance1_image: ba643500-7322-4c16-aaab-b129277a07db
+#  instance1_image: 168f7c6b-20a6-4a4e-8052-d1200aa36a1e
+  instance1_flavor: s1.cw.small-1
+  public_net_id: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+  private_net_id: 76dfc928-296e-4929-b775-7be5b5a343f4
+  private_subnet_id: c34867dd-699e-4ab2-bf5d-4eafea8b86e5
