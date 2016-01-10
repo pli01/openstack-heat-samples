@@ -43,7 +43,25 @@ resources:
         - port: { get_resource: Instance1_port }
       user_data_format: RAW
       user_data:
-        get_resource: Instance1_UserData
+        get_resource: init_server
+
+  init_server:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: { get_resource: system_bootstrap }
+      - config: { get_resource: Instance1_UserData }
+
+  system_bootstrap:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config: |
+        #!/bin/bash
+        set -x
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get -qqy update
+        apt-get -qqy upgrade
+        apt-get -fyq install ansible git
 
   Instance1_UserData:
     type: OS::Heat::CloudConfig
@@ -58,10 +76,79 @@ resources:
               template: |
                 #!/bin/bash
                 set -x
-                export DEBIAN_FRONTEND=noninteractive
-                apt-get -qqy update
-                apt-get -qqy upgrade
-                apt-get -f -y -q install apache2
+                #export DEBIAN_FRONTEND=noninteractive
+                #apt-get -qqy update
+                #apt-get -qqy upgrade
+                mkdir /root/ansible
+                git clone https://github.com/geerlingguy/ansible-role-mysql.git /root/ansible/mysql
+                echo -e "[mysql]\n127.0.0.1 ansible_connection=local ansible_ssh_user=cloud" > /root/ansible/hosts
+                cat <<EOF > /root/ansible/local.yml
+                - hosts: mysql
+                  roles:
+                    - role: mysql
+                EOF
+
+                mkdir /root/ansible/group_vars
+                cat <<EOF > /root/ansible/group_vars/mysql.yml
+                mysql_root_password: super-secure-password
+                mysql_databases:
+                  - name: example_db
+                    encoding: latin1
+                    collation: latin1_general_ci
+                mysql_users:
+                  - name: example_user
+                    host: "%"
+                    password: similarly-secure-password
+                    priv: "example_db.*:ALL"
+                EOF
+
+                ansible-playbook -i /root/ansible/hosts /root/ansible/local.yml -vv
+
+                apt-get -qqy install apache2 php5 php5-mysql mysql-client
+                curl -o /opt/mediawiki-1.26.2.tar.gz https://releases.wikimedia.org/mediawiki/1.26/mediawiki-1.26.2.tar.gz
+                tar -zxvf /opt/mediawiki-1.26.2.tar.gz -C /opt
+
+                git clone https://github.com/pli01/stackato-apps-samples /opt/stackato-apps-samples
+                mv /opt/stackato-apps-samples/mediawiki/m* /opt/mediawiki-1.26.2/
+
+                cat <<EOF > /etc/apache2/sites-available/mediawiki.conf
+                <VirtualHost *:80>
+                    ServerName wiki.yourdomain.com
+                    ServerAdmin your@email
+
+                    RewriteEngine on
+                    RewriteRule (.*) /opt/mediawiki-1.26.2/\$1
+                #    Alias /wiki /opt/mediawiki-1.26.2/index.php
+                #    Alias /index.php /opt/mediawiki-1.26.2/index.php
+                #    Alias /skins /opt/mediawiki-1.26.2/skins
+                #    Alias /images /opt/mediawiki-1.26.2/images
+                ##    Alias / /var/lib/mediawiki/index.php
+
+                    <Directory /opt/mediawiki-1.26.2/>
+                        Options +FollowSymLinks
+                        AllowOverride All
+                #        order allow,deny
+                        Require all granted
+                    </Directory>
+
+                    # some directories must be protected
+                    <Directory /opt/mediawiki-1.26.2/config>
+                        Options -FollowSymLinks
+                        AllowOverride None
+                    </Directory>
+                    <Directory /opt/mediawiki-1.26.2/upload>
+                        Options -FollowSymLinks
+                        AllowOverride None
+                    </Directory>
+                </VirtualHost>
+                EOF
+
+                a2enmod rewrite
+                a2dissite 000-default default-ssl
+                a2ensite mediawiki
+                update-rc.d apache2 enable
+                service apache2 restart
+
               params:
                 $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
           owner: root:root
