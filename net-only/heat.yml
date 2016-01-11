@@ -1,0 +1,83 @@
+heat_template_version: 2013-05-23
+description: HOT template to create private net, subnet, cidr, gateway only
+
+parameters:
+  public_net:
+    type: string
+    description: public network id
+
+  private_net_name:
+    type: string
+    description: private net name
+    default: private-net
+
+  private_subnet_cidr:
+    type: string
+    description: private subnet cidr
+    default: 172.16.1.0/24
+
+  private_subnet_gateway_ip:
+    type: string
+    description: private subnet gateway ip
+    default: 172.16.1.1
+
+  private_subnet_pool_start:
+    type: string
+    description: private subnet pool start
+    default: 172.16.1.100
+
+  private_subnet_pool_end:
+    type: string
+    description: private subnet pool end
+    default: 172.16.1.199
+
+  dns_nameservers:
+    type: comma_delimited_list
+    description: private subnet pool end
+    default: ''
+
+
+resources:
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: private_net_name }
+     
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: private_net }
+      ip_version: 4
+      cidr: { get_param: private_subnet_cidr }
+      gateway_ip: { get_param: private_subnet_gateway_ip }
+      enable_dhcp: True
+      dns_nameservers: {get_param: dns_nameservers}
+      allocation_pools:
+        - { start: { get_param: private_subnet_pool_start } , end: { get_param: private_subnet_pool_end } } 
+
+  router1:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: public_net }
+     
+  router1_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: router1 }
+      subnet_id: { get_resource: private_subnet }
+
+outputs:
+  router1_id:
+    description: Router id
+    value: { get_resource: router1 }
+  router1_interface_id:
+    description: Router interface id
+    value: { get_resource: router1_interface }
+  private_subnet_id:
+    description: Private subnet id
+    value: { get_resource: private_subnet }
+  private_net_id:
+    description: Private net id
+    value: { get_resource: private_net }
+

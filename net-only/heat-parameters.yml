@@ -1,0 +1,8 @@
+parameters:
+  public_net: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+  private_net_name: private_net1
+  private_subnet_cidr: 192.168.2.0/24
+  private_subnet_gateway_ip: 192.168.2.1
+  private_subnet_pool_start: 192.168.2.100
+  private_subnet_pool_end: 192.168.2.199
+  dns_nameservers: ""
