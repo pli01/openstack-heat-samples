@@ -1,0 +1,59 @@
+heat_template_version: 2013-05-23
+
+description: >
+  Generic template 1 VM with boot on volume
+  1 server front with SSH/HTTP/HTTPS open
+
+parameters:
+
+  key_name:
+    type: string
+    description: Name of keypair to assign to servers
+
+  web_image:
+    type: string
+    description: Name of image to use for web server
+  web_flavor:
+    type: string
+    description: Flavor to use for web server
+  web_vol_size:
+    type: number
+    description: The size of the Cinder volume for web server
+  web_vol_type:
+    type: string
+    description: The volume type of the Cinder volume for web server
+
+  public_net_id:
+    type: string
+    description: >
+      ID of public network for which floating IP addresses will be allocated
+  private_net_id:
+    type: string
+    description: ID of private network into which servers get deployed
+  private_subnet_id:
+    type: string
+    description: ID of private sub network into which servers get deployed
+
+resources:
+  Web_Server:
+         type: Lib::Stack::Web
+         properties:
+           key_name: { get_param: key_name }
+           instance1_flavor: { get_param: web_flavor }
+           instance1_image: { get_param: web_image }
+           instance1_vol_size: { get_param: web_vol_size }
+           instance1_vol_type: { get_param: web_vol_type }
+           public_net_id: { get_param: public_net_id }
+           private_net_id: { get_param: private_net_id }
+           private_subnet_id: { get_param: private_subnet_id }
+
+outputs:
+  Web_private_ip:
+    description: Web private IP address
+    value: { get_attr: [ Web_Server, Instance1_private_ip ] }
+  Web_public_ip:
+    description: Web public IP address
+    value: { get_attr: [ Web_Server, Instance1_public_ip ] }
+  Web_Server_id:
+    description: Web nova ressource id
+    value: { get_resource: Web_Server }
