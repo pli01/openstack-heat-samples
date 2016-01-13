@@ -189,7 +189,9 @@ resources:
 
                 # add a cron job to monitor the metadata and update haproxy
                 crontab -l >_crontab || true
-                echo "* * * * * curl -s http://169.254.169.254/openstack/latest/meta_data.json | python /etc/haproxy/update.py | /usr/bin/logger -t haproxy_update" >>_crontab
+                echo "* * * * * /usr/bin/curl -s http://169.254.169.254/openstack/latest/meta_data.json | python /etc/haproxy/update.py | /usr/bin/logger -t haproxy_update" >>_crontab
+                crontab <_crontab
+                rm _crontab
 
           owner: root:root
           permissions: '0755'

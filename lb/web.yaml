@@ -23,10 +23,10 @@ parameters:
     type: string
     description: The volume type of the Cinder volume for instance1 server
 
-  public_net_id:
-    type: string
-    description: >
-      ID of public network for which floating IP addresses will be allocated
+#  public_net_id:
+#    type: string
+#    description: >
+#      ID of public network for which floating IP addresses will be allocated
   private_net_id:
     type: string
     description: ID of private network into which servers get deployed
@@ -70,12 +70,12 @@ resources:
       image: { get_param: instance1_image }
       volume_type: { get_param: instance1_vol_type }
 
-  Instance1_floating_ip:
-    type: OS::Neutron::FloatingIP
-    properties:
-      floating_network_id: { get_param: public_net_id }
-      port_id: { get_resource: Instance1_port }
-
+#  Instance1_floating_ip:
+#    type: OS::Neutron::FloatingIP
+#    properties:
+#      floating_network_id: { get_param: public_net_id }
+#      port_id: { get_resource: Instance1_port }
+#
 ##############
 # INSTANCE 1 #
 ##############
@@ -128,7 +128,8 @@ resources:
                 echo "$public_ip$ -> " > /var/www/html/index.html
                 echo $(/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{ print $2 }' | awk '{ print $1 }') >> /var/www/html/index.html
               params:
-                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+                 $public_ip$: { get_resource: Instance1_port }
+#                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
           owner: root:root
           permissions: '0755'
 
@@ -146,9 +147,9 @@ outputs:
   Instance1_private_ip:
     description: Instance1 private IP address
     value: { get_attr: [ Instance1_Server, first_address ] }
-  Instance1_public_ip:
-    description: Instance1 public IP address
-    value: { get_attr: [ Instance1_floating_ip, floating_ip_address ] }
+#  Instance1_public_ip:
+#    description: Instance1 public IP address
+#    value: { get_attr: [ Instance1_floating_ip, floating_ip_address ] }
   Instance1_Server_id:
     description: Instance1 nova ressource id
     value: { get_resource: Instance1_Server }

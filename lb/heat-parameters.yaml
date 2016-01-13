@@ -1,5 +1,6 @@
 parameters:
   key_name: user1
+  cluster_size: 2
   web_image: 168f7c6b-20a6-4a4e-8052-d1200aa36a1e
   web_flavor: s1.cw.small-1
   web_vol_size: 50
