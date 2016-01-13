@@ -5,7 +5,7 @@ parameters:
   instance1_vol_size: 50
   instance1_vol_type: standard
   public_net_id: 6ea98324-0f14-49f6-97c0-885d1b8dc517
-  private_net_id: d6fdd78c-021a-48f5-b65e-b6edb706711a
-  private_subnet_id: 1f00681f-1243-42be-b32e-44359d251bb3
+  private_net_id: 239b3137-865d-40a4-883e-f96f742dd694
+  private_subnet_id: c6adf86c-6a8d-4481-957c-87128cf8bdf5
   vpn_cidr: 192.168.111.0/24
 #  remote_net_cidr: 172.16.0.0/24
