@@ -184,7 +184,7 @@ resources:
 
                 # reload haproxy's configuration
                 print('Reloading haproxy with servers: ' + ', '.join(new_servers))
-                subprocess.call(['service', 'haproxy', 'reload'])
+                subprocess.call(['/usr/sbin/service', 'haproxy', 'reload'])
                 EOF
 
                 # add a cron job to monitor the metadata and update haproxy
