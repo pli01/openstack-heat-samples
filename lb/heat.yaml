@@ -51,8 +51,8 @@ resources:
            key_name: { get_param: key_name }
            instance1_flavor: { get_param: web_flavor }
            instance1_image: { get_param: web_image }
-           instance1_vol_size: { get_param: web_vol_size }
-           instance1_vol_type: { get_param: web_vol_type }
+#           instance1_vol_size: { get_param: web_vol_size }
+#           instance1_vol_type: { get_param: web_vol_type }
 #           public_net_id: { get_param: public_net_id }
            private_net_id: { get_param: private_net_id }
            private_subnet_id: { get_param: private_subnet_id }

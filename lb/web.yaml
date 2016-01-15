@@ -16,13 +16,13 @@ parameters:
   instance1_flavor:
     type: string
     description: Flavor to use for instance1 server
-  instance1_vol_size:
-    type: number
-    description: The size of the Cinder volume for instance1 server
-  instance1_vol_type:
-    type: string
-    description: The volume type of the Cinder volume for instance1 server
-
+#  instance1_vol_size:
+#    type: number
+#    description: The size of the Cinder volume for instance1 server
+#  instance1_vol_type:
+#    type: string
+#    description: The volume type of the Cinder volume for instance1 server
+#
 #  public_net_id:
 #    type: string
 #    description: >
@@ -63,13 +63,13 @@ resources:
         - subnet_id: { get_param: private_subnet_id }
       security_groups: [{ get_resource: Instance1_security_group }]
 
-  Instance1_root_vol:
-    type: OS::Cinder::Volume
-    properties:
-      size: { get_param: instance1_vol_size }
-      image: { get_param: instance1_image }
-      volume_type: { get_param: instance1_vol_type }
-
+#  Instance1_root_vol:
+#    type: OS::Cinder::Volume
+#    properties:
+#      size: { get_param: instance1_vol_size }
+#      image: { get_param: instance1_image }
+#      volume_type: { get_param: instance1_vol_type }
+#
 #  Instance1_floating_ip:
 #    type: OS::Neutron::FloatingIP
 #    properties:
@@ -82,9 +82,10 @@ resources:
 
   Instance1_Server:
          type: OS::Nova::Server
-         depends_on: Instance1_root_vol
+#         depends_on: Instance1_root_vol
          properties:
-           block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : Instance1_root_vol }, delete_on_termination : "true" }]
+#           block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : Instance1_root_vol }, delete_on_termination : "true" }]
+           image: { get_param: instance1_image }
            flavor: { get_param: instance1_flavor }
            key_name: { get_param: key_name }
            networks:
@@ -140,9 +141,9 @@ resources:
         runcmd:
           - /root/launch.sh
 
-  SwiftContainer:
-    type: OS::Swift::Container
-
+#  SwiftContainer:
+#    type: OS::Swift::Container
+#
 outputs:
   Instance1_private_ip:
     description: Instance1 private IP address
@@ -159,12 +160,12 @@ outputs:
   Instance1_security_group_id:
     description: Instance1 security id
     value: { get_resource: Instance1_security_group }
-  Instance1_root_vol_id:
-    description: Instance1 cinder volume id
-    value: { get_resource: Instance1_root_vol }
+#  Instance1_root_vol_id:
+#    description: Instance1 cinder volume id
+#    value: { get_resource: Instance1_root_vol }
   Instance1_floating_ip_id:
     description: Instance1 floating ip id
     value: { get_resource: Instance1_floating_ip }
-  Bucket_domain:
-    description: "Domain of Swift host"
-    value: { get_attr: [SwiftContainer, DomainName] }
+#  Bucket_domain:
+#    description: "Domain of Swift host"
+#    value: { get_attr: [SwiftContainer, DomainName] }
