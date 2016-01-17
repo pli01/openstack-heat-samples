@@ -184,13 +184,13 @@ resources:
                     with open(cfg, "wt") as cfg_f:
                         cfg_f.write(content)
                         cfg_f.write("""
-                                listen app *:80
-                                mode http
-                                balance roundrobin
-                                option httpclose
-                                option forwardfor
+                            listen app *:80
+                            mode http
+                            balance roundrobin
+                            option httpclose
+                            option forwardfor
                         """)
-                     for i, server in enumerate(new):
+                        for i, server in enumerate(new):
                            cfg_f.write(
                                 '    server server-{0} {1}:{2}\n'.format(i, server, PORT))
 
