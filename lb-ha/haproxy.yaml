@@ -1,0 +1,306 @@
+heat_template_version: 2013-05-23
+
+description: >
+  Generic template 1 HA Proxy with boot on volume
+  1 server front with SSH/HTTP/HTTPS open
+
+parameters:
+
+  key_name:
+    type: string
+    description: Name of keypair to assign to servers
+
+  haproxy_image:
+    type: string
+    description: Name of image to use for haproxy server
+  haproxy_flavor:
+    type: string
+    description: Flavor to use for haproxy server
+  haproxy_vol_size:
+    type: number
+    description: The size of the Cinder volume for haproxy server
+  haproxy_vol_type:
+    type: string
+    description: The volume type of the Cinder volume for haproxy server
+
+  public_net_id:
+    type: string
+    description: >
+      ID of public network for which floating IP addresses will be allocated
+  private_net_id:
+    type: string
+    description: ID of private network into which servers get deployed
+  private_subnet_id:
+    type: string
+    description: ID of private sub network into which servers get deployed
+
+  servers:
+    type: comma_delimited_list
+    label: Servers
+    description: Comma separated list of servers in the cluster.
+  port_number:
+    type: number
+    label: Port number
+    description: Port number to proxy.
+    default: 80
+  shared_ip:
+   type: string
+   description: Fixed ip of the extra port which will be used by keepalived.
+   default: 10.0.0.2
+  vrrp_state:
+   type: string
+   description: VRRP State
+   default: 'MASTER'
+  vrrp_priority:
+   type: number
+   description: VRRP number
+   default: 100
+  vrrp_router_id:
+   type: number
+   description: VRRP router_id
+   default: 1
+
+resources:
+  haproxy_security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: Add security group rules for server
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: { get_param: port_number }
+          port_range_max: { get_param: port_number }
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: icmp
+
+  haproxy_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_net_id }
+      allowed_address_pairs:
+        - ip_address: { get_param: shared_ip }
+      fixed_ips:
+        - subnet_id: { get_param: private_subnet_id }
+      security_groups: [{ get_resource: haproxy_security_group }]
+      replacement_policy: AUTO
+
+  haproxy_root_vol:
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: haproxy_vol_size }
+      image: { get_param: haproxy_image }
+      volume_type: { get_param: haproxy_vol_type }
+
+  haproxy_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net_id }
+      port_id: { get_resource: haproxy_port }
+
+##############
+# INSTANCE 1 #
+##############
+
+  haproxy_Server:
+         type: OS::Nova::Server
+         depends_on: haproxy_root_vol
+         properties:
+           block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : haproxy_root_vol }, delete_on_termination : "true" }]
+           flavor: { get_param: haproxy_flavor }
+           key_name: { get_param: key_name }
+           networks:
+             - port: { get_resource: haproxy_port }
+           metadata:
+             servers: { get_param: servers }
+           user_data_format: RAW
+           user_data:
+             get_resource: init_server
+     
+  init_server:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: { get_resource: system_bootstrap }
+      - config: { get_resource: haproxy_UserData }
+
+  system_bootstrap:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config: |
+        #!/bin/bash
+        set -x
+        sleep 60
+
+  haproxy_UserData:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        preserve_hostname: true
+        manage_etc_hosts: false
+        write_files:
+        - path: /root/launch.sh
+          content:
+            str_replace:
+              params:
+                $public_ip$: { get_attr: [haproxy_floating_ip, floating_ip_address] }
+                __port__: { get_param: port_number }
+                $shared_ip: { get_param: shared_ip }
+                $vrrp_state: { get_param: vrrp_state }
+                $vrrp_priority: { get_param: vrrp_priority }
+                $vrrp_router_id: { get_param: vrrp_router_id }
+              template: |
+                #!/bin/bash
+                set -x
+                export DEBIAN_FRONTEND=noninteractive
+                apt-get -qqy update
+                apt-get -qqy upgrade
+
+                # install keepalived
+                apt-get -y install keepalived
+                rm -rf /etc/keepalived/keepalived.conf
+                echo '
+                vrrp_script chk_haproxy {
+                   script "pkill -0 haproxy"     # verify the pid existance
+                   interval 2                    # check every 2 seconds
+                   weight 2                      # add 2 points of prio if OK
+                }
+                vrrp_instance vrrp_group_1 {
+                  state $vrrp_state
+                  interface eth0
+                  virtual_router_id $vrrp_router_id
+                  priority $vrrp_priority
+                  authentication {
+                   auth_type PASS
+                   auth_pass password
+                  }
+                  virtual_ipaddress {
+                   $shared_ip/24 brd 192.168.2.255 dev eth0
+                  }
+                  track_script {
+                      chk_haproxy
+                  }
+                 }
+                ' >> /etc/keepalived/keepalived.conf
+                service keepalived restart
+
+                # install haproxy
+                apt-get -y install build-essential python python-dev python-virtualenv supervisor haproxy
+
+                sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
+
+                # save haproxy original configuration
+                cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy_base.cfg
+
+                # write an initial empty list of worker servers
+                cat >>/etc/haproxy/servers.json <<EOF
+                []
+                EOF
+
+                # write the update script
+                cat >>/etc/haproxy/update.py <<EOF
+                import sys
+                import json
+                import subprocess
+
+                PORT = "__port__"
+
+                def get_metadata():
+                    metadata = json.loads(sys.stdin.read())
+                    new_servers = json.loads(metadata.get('meta', {}).get('servers', '[]'))
+                    if new_servers:
+                       return new_servers
+                    raise IOError("cannot fetch metadata")
+
+                def get_current_config(etc_s="/etc/haproxy/servers.json"):
+                    with open(etc_s, 'r') as curr:
+                        content = json.loads(curr.read())
+                    return content
+
+                def is_equal(new, current):
+                   if new == current:
+                      return True
+                   return False
+
+                def update_current_config(new, etc_s="/etc/haproxy/servers.json"):
+                    with open(etc_s, "wt") as config:
+                        config.write(json.dumps(new))
+
+                def generate_config(new, cfg="/etc/haproxy/haproxy.cfg", base="/etc/haproxy/haproxy_base.cfg"):
+                    with open(base, "r") as base_f:
+                        content = base_f.read()
+
+                    with open(cfg, "wt") as cfg_f:
+                        cfg_f.write(content)
+                        cfg_f.write("""
+                        listen app *:80
+                            mode http
+                            balance roundrobin
+                            option httpclose
+                            option forwardfor
+                            stats enable
+                            stats uri /haproxy?stats
+                            reqadd X-Forwarded-Proto:\ http
+                        """)
+                        for i, server in enumerate(new):
+                           cfg_f.write(
+                                '    server server-{0} {1}:{2}\n'.format(i, server, PORT))
+
+                def reload_new_config():
+                     cmd = ['/usr/sbin/service', 'haproxy', 'reload']
+                     ret = subprocess.call(cmd)
+                     if ret != 0:
+                         raise SystemError("cant reload config %s" % " ".join(cmd))
+
+                if __name__ == "__main__":
+                     new_servers = get_metadata()
+                     if is_equal(new_servers, get_current_config()) is False:
+                        update_current_config(new_servers)
+                        generate_config(new_servers)
+                        reload_new_config()
+                EOF
+
+                # add a cron job to monitor the metadata and update haproxy
+                crontab -l >_crontab || true
+                echo "* * * * * /usr/bin/curl -s http://169.254.169.254/openstack/latest/meta_data.json | python /etc/haproxy/update.py | /usr/bin/logger -t haproxy_update" >>_crontab
+                crontab <_crontab
+                rm _crontab
+
+          owner: root:root
+          permissions: '0755'
+
+        bootcmd:
+          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
+          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
+
+        runcmd:
+          - /root/launch.sh
+
+outputs:
+  haproxy_private_ip:
+    description: haproxy private IP address
+    value: { get_attr: [ haproxy_Server, first_address ] }
+  haproxy_public_ip:
+    description: haproxy public IP address
+    value: { get_attr: [ haproxy_floating_ip, floating_ip_address ] }
+  haproxy_Server_id:
+    description: haproxy nova ressource id
+    value: { get_resource: haproxy_Server }
+  haproxy_port_id:
+    description: haproxy port id
+    value: { get_resource: haproxy_port }
+  haproxy_security_group_id:
+    description: haproxy security id
+    value: { get_resource: haproxy_security_group }
+  haproxy_root_vol_id:
+    description: haproxy cinder volume id
+    value: { get_resource: haproxy_root_vol }
+  haproxy_floating_ip_id:
+    description: haproxy floating ip id
+    value: { get_resource: haproxy_floating_ip }
+  haproxy_name:
+    description: Name of the HAProxy instance.
+    value: { get_attr: [haproxy_Server, name] }
