@@ -1,4 +1,4 @@
-heat_template_version: 2013-05-23
+heat_template_version: 2014-10-16
 
 description: >
   Generic template 1 HA Proxy with boot on volume
@@ -161,6 +161,9 @@ resources:
 
                 # install keepalived
                 apt-get -y install keepalived
+                # tell kernal to allow binding non-local IP
+                echo "net.ipv4.ip_nonlocal_bind = 1" >> /etc/sysctl.conf
+                sysctl -p
                 rm -rf /etc/keepalived/keepalived.conf
                 echo '
                 vrrp_script chk_haproxy {
@@ -178,7 +181,7 @@ resources:
                    auth_pass password
                   }
                   virtual_ipaddress {
-                   $shared_ip/24 brd 192.168.2.255 dev eth0
+                   $shared_ip dev eth0
                   }
                   track_script {
                       chk_haproxy
@@ -236,7 +239,7 @@ resources:
                     with open(cfg, "wt") as cfg_f:
                         cfg_f.write(content)
                         cfg_f.write("""
-                        listen app *:80
+                listen app *:80
                             mode http
                             balance roundrobin
                             option httpclose
@@ -244,10 +247,10 @@ resources:
                             stats enable
                             stats uri /haproxy?stats
                             reqadd X-Forwarded-Proto:\ http
-                        """)
+                """)
                         for i, server in enumerate(new):
                            cfg_f.write(
-                                '    server server-{0} {1}:{2}\n'.format(i, server, PORT))
+                                '            server server-{0} {1}:{2}\n'.format(i, server, PORT))
 
                 def reload_new_config():
                      cmd = ['/usr/sbin/service', 'haproxy', 'reload']

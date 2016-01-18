@@ -1,4 +1,4 @@
-heat_template_version: 2013-05-23
+heat_template_version: 2014-10-16
 
 description: >
   Generic template 1 VM with boot on volume
@@ -100,6 +100,7 @@ resources:
       parts:
       - config: { get_resource: system_bootstrap }
       - config: { get_resource: Instance1_UserData }
+      - config: { get_resource: Instance1_configure }
 
   system_bootstrap:
     type: OS::Heat::SoftwareConfig
@@ -122,15 +123,13 @@ resources:
               template: |
                 #!/bin/bash
                 set -x
+                dpkg -l apache2 && exit 0
                 export DEBIAN_FRONTEND=noninteractive
                 apt-get -qqy update
                 apt-get -qqy upgrade
                 apt-get -f -y -q install apache2
-                echo "$public_ip$ -> " > /var/www/html/index.html
-                echo $(/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{ print $2 }' | awk '{ print $1 }') >> /var/www/html/index.html
               params:
                  $public_ip$: { get_resource: Instance1_port }
-#                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
           owner: root:root
           permissions: '0755'
 
@@ -140,6 +139,30 @@ resources:
 
         runcmd:
           - /root/launch.sh
+
+  Instance1_configure:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        preserve_hostname: true
+        manage_etc_hosts: false
+        write_files:
+        - path: /root/configure.sh
+          content:
+            str_replace:
+              template: |
+                #!/bin/bash
+                set -x
+                echo "$public_ip$ -> " > /var/www/html/index.html
+                echo $(/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{ print $2 }' | awk '{ print $1 }') >> /var/www/html/index.html
+              params:
+                 $public_ip$: { get_resource: Instance1_port }
+          owner: root:root
+          permissions: '0755'
+
+        runcmd:
+          - /root/configure.sh
+
 
 #  SwiftContainer:
 #    type: OS::Swift::Container
@@ -163,9 +186,9 @@ outputs:
 #  Instance1_root_vol_id:
 #    description: Instance1 cinder volume id
 #    value: { get_resource: Instance1_root_vol }
-  Instance1_floating_ip_id:
-    description: Instance1 floating ip id
-    value: { get_resource: Instance1_floating_ip }
+#  Instance1_floating_ip_id:
+#    description: Instance1 floating ip id
+#    value: { get_resource: Instance1_floating_ip }
 #  Bucket_domain:
 #    description: "Domain of Swift host"
 #    value: { get_attr: [SwiftContainer, DomainName] }
