@@ -163,9 +163,9 @@ outputs:
 #  Instance1_root_vol_id:
 #    description: Instance1 cinder volume id
 #    value: { get_resource: Instance1_root_vol }
-  Instance1_floating_ip_id:
-    description: Instance1 floating ip id
-    value: { get_resource: Instance1_floating_ip }
+#  Instance1_floating_ip_id:
+#    description: Instance1 floating ip id
+#    value: { get_resource: Instance1_floating_ip }
 #  Bucket_domain:
 #    description: "Domain of Swift host"
 #    value: { get_attr: [SwiftContainer, DomainName] }

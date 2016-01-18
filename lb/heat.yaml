@@ -23,6 +23,19 @@ parameters:
     type: string
     description: The volume type of the Cinder volume for web server
 
+  haproxy_image:
+    type: string
+    description: Name of image to use for haproxy server
+  haproxy_flavor:
+    type: string
+    description: Flavor to use for haproxy server
+  haproxy_vol_size:
+    type: number
+    description: The size of the Cinder volume for haproxy server
+  haproxy_vol_type:
+    type: string
+    description: The volume type of the Cinder volume for haproxy server
+
   public_net_id:
     type: string
     description: >
@@ -61,10 +74,10 @@ resources:
     type: Lib::Stack::HAProxy
     properties:
       key_name: { get_param: key_name }
-      haproxy_flavor: { get_param: web_flavor }
-      haproxy_image: { get_param: web_image }
-      haproxy_vol_size: { get_param: web_vol_size }
-      haproxy_vol_type: { get_param: web_vol_type }
+      haproxy_flavor: { get_param: haproxy_flavor }
+      haproxy_image: { get_param: haproxy_image }
+      haproxy_vol_size: { get_param: haproxy_vol_size }
+      haproxy_vol_type: { get_param: haproxy_vol_type }
       public_net_id: { get_param: public_net_id }
       private_net_id: { get_param: private_net_id }
       private_subnet_id: { get_param: private_subnet_id }

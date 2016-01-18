@@ -5,6 +5,10 @@ parameters:
   web_flavor: s1.cw.small-1
   web_vol_size: 50
   web_vol_type: standard
+  haproxy_image: 168f7c6b-20a6-4a4e-8052-d1200aa36a1e
+  haproxy_flavor: s1.cw.small-1
+  haproxy_vol_size: 50
+  haproxy_vol_type: standard
   public_net_id: 6ea98324-0f14-49f6-97c0-885d1b8dc517
   private_net_id: 239b3137-865d-40a4-883e-f96f742dd694
   private_subnet_id: c6adf86c-6a8d-4481-957c-87128cf8bdf5
