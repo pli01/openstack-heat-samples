@@ -1,0 +1,194 @@
+heat_template_version: 2013-05-23
+
+description: >
+  Generic template 1 VM with boot on volume
+  1 server front with SSH/HTTP/HTTPS open
+
+parameters:
+
+  key_name:
+    type: string
+    description: Name of keypair to assign to servers
+
+  instance1_image:
+    type: string
+    description: Name of image to use for instance1 server
+  instance1_flavor:
+    type: string
+    description: Flavor to use for instance1 server
+  instance1_vol_size:
+    type: number
+    description: The size of the Cinder volume for instance1 server
+  instance1_vol_type:
+    type: string
+    description: The volume type of the Cinder volume for instance1 server
+
+  public_net_id:
+    type: string
+    description: >
+      ID of public network for which floating IP addresses will be allocated
+  private_net_id:
+    type: string
+    description: ID of private network into which servers get deployed
+  private_subnet_id:
+    type: string
+    description: ID of private sub network into which servers get deployed
+
+resources:
+  Instance1_security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: Add security group rules for server
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 80
+          port_range_max: 80
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 443
+          port_range_max: 443
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: icmp
+
+  Instance1_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: private_net_id }
+      fixed_ips:
+        - subnet_id: { get_param: private_subnet_id }
+      security_groups: [{ get_resource: Instance1_security_group }]
+
+  Instance1_root_vol:
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: instance1_vol_size }
+      image: { get_param: instance1_image }
+      volume_type: { get_param: instance1_vol_type }
+
+  Instance1_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net_id }
+      port_id: { get_resource: Instance1_port }
+
+##############
+# INSTANCE 1 #
+##############
+
+  Instance1_Server:
+         type: OS::Nova::Server
+         depends_on: Instance1_root_vol
+         properties:
+           block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : Instance1_root_vol }, delete_on_termination : "true" }]
+           flavor: { get_param: instance1_flavor }
+           key_name: { get_param: key_name }
+           networks:
+             - port: { get_resource: Instance1_port }
+           user_data_format: RAW
+           user_data:
+             get_resource: init_server
+
+  init_server:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: { get_resource: init_deployment }
+      - config: { get_resource: config_deployment }
+##      - config: { get_resource: Instance1_UserData }
+
+  init_deployment:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+         get_file: ../config-scripts/script-init.sh
+
+  config_deployment:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+       str_replace:
+         params:
+           $foo: 'foofoo'
+           $bar: 'babar'
+         template:
+           get_file: ../config-scripts/script-config.sh
+
+#  Instance1_UserData:
+#    type: OS::Heat::CloudConfig
+#    properties:
+#      cloud_config:
+#        preserve_hostname: true
+#        manage_etc_hosts: false
+#        write_files:
+#        - path: /root/launch.sh
+#          content:
+#            str_replace:
+#              template: |
+#                #!/bin/bash
+#                set -x
+#                export DEBIAN_FRONTEND=noninteractive
+#                apt-get -qqy update
+#                apt-get -qqy upgrade
+#                apt-get -f -y -q install apache2
+#                echo "$public_ip$ -> " > /var/www/html/index.html
+#                echo $(/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{ print $2 }' | awk '{ print $1 }') >> /var/www/html/index.html
+#              params:
+#                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+#          owner: root:root
+#          permissions: '0755'
+#
+#        bootcmd:
+#          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
+#          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
+#
+#        runcmd:
+#          - /root/launch.sh
+#
+#  SwiftContainer:
+#    type: OS::Swift::Container
+#
+outputs:
+#  result:
+#    value:
+#      get_attr: [system_deployment, result]
+#  stdout:
+#    value:
+#      get_attr: [system_deployment, deploy_stdout]
+#  stderr:
+#    value:
+#      get_attr: [system_deployment, deploy_stderr]
+#  status_code:
+#    value:
+#      get_attr: [system_deployment, deploy_status_code]
+#  other_result:
+#    value:
+#      get_attr: [other_deployment, result]
+  Instance1_private_ip:
+    description: Instance1 private IP address
+    value: { get_attr: [ Instance1_Server, first_address ] }
+  Instance1_public_ip:
+    description: Instance1 public IP address
+    value: { get_attr: [ Instance1_floating_ip, floating_ip_address ] }
+  Instance1_Server_id:
+    description: Instance1 nova ressource id
+    value: { get_resource: Instance1_Server }
+  Instance1_port_id:
+    description: Instance1 port id
+    value: { get_resource: Instance1_port }
+  Instance1_security_group_id:
+    description: Instance1 security id
+    value: { get_resource: Instance1_security_group }
+  Instance1_root_vol_id:
+    description: Instance1 cinder volume id
+    value: { get_resource: Instance1_root_vol }
+  Instance1_floating_ip_id:
+    description: Instance1 floating ip id
+    value: { get_resource: Instance1_floating_ip }
+#  Bucket_domain:
+#    description: "Domain of Swift host"
+#    value: { get_attr: [SwiftContainer, DomainName] }
