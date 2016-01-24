@@ -1,5 +1,5 @@
 heat_template_version: 2013-05-23
-description: HOT template for on simple VM with floating ips.
+description: HOT template for multiple net with VM
 
 parameters:
   key_name:
