@@ -1,12 +1,9 @@
 #!/bin/bash
 set -x
-# parameters = env variable or parameters heat
-#  $foo
-#  $bar
-
-
-echo "Myscript: Writing to /tmp/$bar"
-echo "Myscript: $foo" > /tmp/$bar
-echo -n "Myscript: The file /tmp/$bar contains `cat /tmp/$bar` for server $deploy_server_id during $deploy_action" > $heat_outputs_path.result
-echo "Myscript: Written to /tmp/$bar"
-echo "Myscript: Output to stderr" 1>&2
+export DEBIAN_FRONTEND=noninteractive
+apt-get -qqy update
+apt-get -qqy upgrade
+apt-get -f -y -q install apache2
+echo "$public_ip -> " > /var/www/html/index.html
+echo "$foo $bar" >> /var/www/html/index.html
+echo $(/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{ print $2 }' | awk '{ print $1 }') >> /var/www/html/index.html

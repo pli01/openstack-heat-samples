@@ -57,3 +57,19 @@ outputs:
   Web_Server_id:
     description: Web nova ressource id
     value: { get_resource: Web_Server }
+#  Web_result:
+#    value:
+#      get_attr: [Web_Server, result]
+#  Web_stdout:
+#    value:
+#      get_attr: [Web_Server, stdout]
+#  Web_stderr:
+#    value:
+#      get_attr: [Web_Server, stderr]
+#  Web_status_code:
+#    value:
+#      get_attr: [Web_Server, status_code]
+#  Web_other_result:
+#    value:
+#      get_attr: [Web_Server, other_result]
+#

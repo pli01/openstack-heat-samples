@@ -99,7 +99,7 @@ resources:
       parts:
       - config: { get_resource: init_deployment }
       - config: { get_resource: config_deployment }
-##      - config: { get_resource: Instance1_UserData }
+      - config: { get_resource: web_deployment }
 
   init_deployment:
     type: OS::Heat::SoftwareConfig
@@ -118,37 +118,30 @@ resources:
          template:
            get_file: ../config-scripts/script-config.sh
 
-#  Instance1_UserData:
-#    type: OS::Heat::CloudConfig
-#    properties:
-#      cloud_config:
-#        preserve_hostname: true
-#        manage_etc_hosts: false
-#        write_files:
-#        - path: /root/launch.sh
-#          content:
-#            str_replace:
-#              template: |
-#                #!/bin/bash
-#                set -x
-#                export DEBIAN_FRONTEND=noninteractive
-#                apt-get -qqy update
-#                apt-get -qqy upgrade
-#                apt-get -f -y -q install apache2
-#                echo "$public_ip$ -> " > /var/www/html/index.html
-#                echo $(/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{ print $2 }' | awk '{ print $1 }') >> /var/www/html/index.html
-#              params:
-#                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
-#          owner: root:root
-#          permissions: '0755'
-#
-#        bootcmd:
-#          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
-#          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
-#
-#        runcmd:
-#          - /root/launch.sh
-#
+  web_deployment:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        preserve_hostname: true
+        manage_etc_hosts: false
+        write_files:
+        - path: /root/script-install-apache.sh
+          content:
+            str_replace:
+              params:
+                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+              template:
+                 get_file: ../config-scripts/script-install-apache.sh
+          owner: root:root
+          permissions: '0755'
+
+        bootcmd:
+          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
+          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
+
+        runcmd:
+          - /root/script-install-apache.sh
+
 #  SwiftContainer:
 #    type: OS::Swift::Container
 #

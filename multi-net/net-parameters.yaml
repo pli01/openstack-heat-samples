@@ -1,0 +1,15 @@
+parameters:
+  dmz_name:
+    type: string
+  dmz_cidr:
+    type: string
+  dmz_gateway_ip:
+    type: string
+  dmz_allocation_pools:
+    type: json
+  dmz_dns_nameservers:
+    type: comma_delimited_list
+  dmz_enable_dhcp:
+    type: string
+  dmz_ip_version:
+    type: number

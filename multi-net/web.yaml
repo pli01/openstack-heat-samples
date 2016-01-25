@@ -16,13 +16,13 @@ parameters:
   instance1_flavor:
     type: string
     description: Flavor to use for instance1 server
-  instance1_vol_size:
-    type: number
-    description: The size of the Cinder volume for instance1 server
-  instance1_vol_type:
-    type: string
-    description: The volume type of the Cinder volume for instance1 server
-
+#  instance1_vol_size:
+#    type: number
+#    description: The size of the Cinder volume for instance1 server
+#  instance1_vol_type:
+#    type: string
+#    description: The volume type of the Cinder volume for instance1 server
+#
   public_net_id:
     type: string
     description: >
@@ -63,83 +63,59 @@ resources:
         - subnet_id: { get_param: private_subnet_id }
       security_groups: [{ get_resource: Instance1_security_group }]
 
-  Instance1_root_vol:
-    type: OS::Cinder::Volume
-    properties:
-      size: { get_param: instance1_vol_size }
-      image: { get_param: instance1_image }
-      volume_type: { get_param: instance1_vol_type }
-
+##  Instance1_root_vol:
+##    type: OS::Cinder::Volume
+##    properties:
+##      size: { get_param: instance1_vol_size }
+##      image: { get_param: instance1_image }
+##      volume_type: { get_param: instance1_vol_type }
+##
   Instance1_floating_ip:
     type: OS::Neutron::FloatingIP
     properties:
       floating_network_id: { get_param: public_net_id }
       port_id: { get_resource: Instance1_port }
 
-##############
-# INSTANCE 1 #
-##############
-
   Instance1_Server:
          type: OS::Nova::Server
-         depends_on: Instance1_root_vol
+#         depends_on: Instance1_root_vol
          properties:
-           block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : Instance1_root_vol }, delete_on_termination : "true" }]
+#           block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : Instance1_root_vol }, delete_on_termination : "true" }]
+           image: { get_param: instance1_image }
            flavor: { get_param: instance1_flavor }
            key_name: { get_param: key_name }
            networks:
              - port: { get_resource: Instance1_port }
-           user_data_format: SOFTWARE_CONFIG
-#           user_data_format: RAW
-#           user_data:
-#             get_resource: init_server
-##
-#  init_server:
-#    type: OS::Heat::MultipartMime
+           user_data_format: RAW
+           user_data:
+             get_resource: init_server
+
+  init_server:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+#      - config: { get_resource: init_deployment }
+      - config: { get_resource: config_deployment }
+##      - config: { get_resource: Instance1_UserData }
+
+#  init_deployment:
+#    type: OS::Heat::SoftwareConfig
 #    properties:
-#      parts:
-#      - config: { get_resource: system_deployment }
-###      - config: { get_resource: Instance1_UserData }
+#      config:
+#         get_file: ../config-scripts/script-init.sh
 #
   config_deployment:
     type: OS::Heat::SoftwareConfig
     properties:
-      group: script
-      inputs:
-      - name: foo
-      - name: bar
-      outputs:
-      - name: result
       config:
-         get_file: ../config-scripts/script-init.sh
+       str_replace:
+         params:
+           $foo: 'foofoo'
+           $bar: 'babar'
+           $public_ip: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+         template:
+           get_file: ../config-scripts/script-config.sh
 
-  system_deployment:
-    type: OS::Heat::SoftwareDeployment
-    properties:
-      config:
-        get_resource: config_deployment
-      server:
-        get_resource: Instance1_Server
-      input_values:
-        foo: fooooo
-        bar: baaaaa
-
-#  other_deployment:
-#    type: OS::Heat::SoftwareDeployment
-#    properties:
-#      config:
-#        get_resource: config_deployment
-#      server:
-#        get_resource: Instance1_Server
-#      input_values:
-#        foo: fu
-#        bar: barmy
-#      actions:
-#      - CREATE
-#      - UPDATE
-#      - SUSPEND
-#      - RESUME
-#
 #  Instance1_UserData:
 #    type: OS::Heat::CloudConfig
 #    properties:
@@ -175,39 +151,24 @@ resources:
 #    type: OS::Swift::Container
 #
 outputs:
-#  result:
-#    value:
-#      get_attr: [system_deployment, result]
-#  stdout:
-#    value:
-#      get_attr: [system_deployment, deploy_stdout]
-#  stderr:
-#    value:
-#      get_attr: [system_deployment, deploy_stderr]
-#  status_code:
-#    value:
-#      get_attr: [system_deployment, deploy_status_code]
-#  other_result:
-#    value:
-#      get_attr: [other_deployment, result]
-  Instance1_private_ip:
+  first_address:
     description: Instance1 private IP address
     value: { get_attr: [ Instance1_Server, first_address ] }
-  Instance1_public_ip:
+  floating_ip_address:
     description: Instance1 public IP address
     value: { get_attr: [ Instance1_floating_ip, floating_ip_address ] }
-  Instance1_Server_id:
+  server_id:
     description: Instance1 nova ressource id
     value: { get_resource: Instance1_Server }
-  Instance1_port_id:
+  port_id:
     description: Instance1 port id
     value: { get_resource: Instance1_port }
-  Instance1_security_group_id:
+  security_group_id:
     description: Instance1 security id
     value: { get_resource: Instance1_security_group }
-  Instance1_root_vol_id:
-    description: Instance1 cinder volume id
-    value: { get_resource: Instance1_root_vol }
+##  Instance1_root_vol_id:
+##    description: Instance1 cinder volume id
+##    value: { get_resource: Instance1_root_vol }
   Instance1_floating_ip_id:
     description: Instance1 floating ip id
     value: { get_resource: Instance1_floating_ip }

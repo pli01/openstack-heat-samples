@@ -93,32 +93,18 @@ resources:
       vrrp_priority: 100
       vrrp_router_id: 1
 
-  vip_security_group:
-    type: OS::Neutron::SecurityGroup
-    properties:
-      description: Add security group rules for server
-      rules:
-        - remote_ip_prefix: 0.0.0.0/0
-          protocol: tcp
-          port_range_min: 80
-          port_range_max: 80
-        - remote_ip_prefix: 0.0.0.0/0
-          protocol: icmp
-
   extra_port:
     type: OS::Neutron::Port
     properties:
       network_id: { get_param: private_net_id }
       fixed_ips:
         - ip_address: { get_param: shared_ip }
-#      security_groups: [{ get_resource: vip_security_group }]
 
   extra_floating_ip:
     type: OS::Neutron::FloatingIP
     properties:
       floating_network_id: { get_param: public_net_id }
       port_id: { get_resource: extra_port }
-
 
 outputs:
   vip_floating_ip:

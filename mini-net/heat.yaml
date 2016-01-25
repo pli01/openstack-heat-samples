@@ -18,6 +18,10 @@ parameters:
     type: string
     description: public network id
 
+  dns_nameservers:
+    type: string
+    description: dns_nameservers network id
+
 resources:
   private_net:
     type: OS::Neutron::Net
@@ -31,6 +35,7 @@ resources:
       ip_version: 4
       cidr: 172.16.1.0/24
       gateway_ip: 172.16.1.1
+      dns_nameservers: [ { get_param: dns_nameservers } ]
       allocation_pools:
         - { start: 172.16.1.100, end: 172.16.1.199 } 
 
@@ -85,8 +90,8 @@ resources:
           template: |
             #!/bin/bash
             echo "$floating_ip$" >> fip.txt
-            DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy update && DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy upgrade
-            DEBIAN_FRONTEND=noninteractive sudo apt-get -qqy install apache2
+            DEBIAN_FRONTEND=noninteractive apt-get -qqy update && DEBIAN_FRONTEND=noninteractive apt-get -qqy upgrade
+            DEBIAN_FRONTEND=noninteractive apt-get -qqy install apache2
           params:
             $floating_ip$: { get_attr: [server1_floating_ip, floating_ip_address] }
 
