@@ -18,28 +18,72 @@ parameters:
     type: string
     description: public network id
 
-resources:
-  private_net:
-    type: OS::Neutron::Net
-    properties:
-      name: private-net
-     
-  private_subnet:
-    type: OS::Neutron::Subnet
-    properties:
-      network_id: { get_resource: private_net }
-      ip_version: 4
-      cidr: 172.16.1.0/24
-      gateway_ip: 172.16.1.1
-      allocation_pools:
-        - { start: 172.16.1.100, end: 172.16.1.199 } 
+  name:
+    type: string
+    description: private net name
+    default: private
 
+  cidr:
+    type: string
+    description: private subnet cidr
+    default: 172.16.1.0/24
+
+  gateway_ip:
+    type: string
+    description: private subnet gateway ip
+    default: 172.16.1.1
+
+  allocation_pools:
+    type: json
+    description: private subnet pool start
+    default:
+        "start": "172.16.1.100"
+        "end": "172.16.1.200"
+
+  dns_nameservers:
+    type: comma_delimited_list
+    description: private subnet pool end
+    default: '8.8.8.8'
+
+  enable_dhcp:
+    type: string
+    description: private subnet cidr
+    default: 'True'
+
+  ip_version:
+    type: number
+    description: private subnet cidr
+    default: 4
+
+resources:
   router1:
     type: OS::Neutron::Router
     properties:
       external_gateway_info:
         network: { get_param: public_net }
+ 
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name:
+        str_replace:
+           template:
+              $subnet-subnet
+           params:
+              $subnet: { get_param: name }
      
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: private_net }
+      ip_version: { get_param: ip_version }
+      cidr: { get_param: cidr }
+      gateway_ip: { get_param: gateway_ip }
+      enable_dhcp: { get_param: enable_dhcp }
+      dns_nameservers: { get_param: dns_nameservers }
+      allocation_pools:
+        - { get_param: allocation_pools }
+
   router1_interface:
     type: OS::Neutron::RouterInterface
     properties:
@@ -55,6 +99,7 @@ resources:
         - subnet_id: { get_resource: private_subnet }
  
   server1_sg:
+    type: OS::Neutron::SecurityGroup
     properties:
       name: server1_sg
       rules:
@@ -62,7 +107,6 @@ resources:
       - {direction: ingress, port_range_max: 80, port_range_min: 80, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
       - {direction: ingress, port_range_max: 443, port_range_min: 443, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
       - {direction: ingress, protocol: icmp, remote_ip_prefix: 0.0.0.0/0}
-    type: OS::Neutron::SecurityGroup
 
   server1_floating_ip:
     type: OS::Neutron::FloatingIP

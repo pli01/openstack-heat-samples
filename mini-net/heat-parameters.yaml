@@ -3,3 +3,13 @@ parameters:
   public_net: 6ea98324-0f14-49f6-97c0-885d1b8dc517
   flavor: s1.cw.small-1
   key_name: user1
+  name: dmz
+  cidr: 192.168.10.0/24
+  gateway_ip: 192.168.10.1
+  allocation_pools:
+    "start": "192.168.10.100"
+    "end": "192.168.10.200"
+  enable_dhcp: 'True'
+  ip_version: 4
+  dns_nameservers: [ '8.8.8.8' ]
+
