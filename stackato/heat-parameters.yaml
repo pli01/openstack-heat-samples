@@ -1,0 +1,15 @@
+parameters:
+  image_id: "Stackato-361"
+  public_net: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+  flavor: n1.cw.highcpu-2
+  key_name: user1
+  name: stackato
+  cidr: 192.168.10.0/24
+  gateway_ip: 192.168.10.1
+  allocation_pools:
+    "start": "192.168.10.100"
+    "end": "192.168.10.200"
+  enable_dhcp: 'True'
+  ip_version: 4
+  dns_nameservers: [ '8.8.8.8' ]
+
