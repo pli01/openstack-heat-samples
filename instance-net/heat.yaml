@@ -42,6 +42,10 @@ resources:
       networks:
         - network: { get_param: private_net_id }
       security_groups: [{ get_resource: Instance1_security_group }]
+      metadata:
+        servers: 'titi'
+        foo:
+         - tutu: titi
       user_data_format: RAW
       user_data:
         get_resource: Instance1_UserData
@@ -56,15 +60,13 @@ resources:
         - path: /root/launch.sh
           content:
             str_replace:
-              template: |
-                #!/bin/bash
-                set -x
-                export DEBIAN_FRONTEND=noninteractive
-                apt-get -qqy update
-                apt-get -qqy upgrade
-                apt-get -f -y -q install apache2
               params:
-                $public_ip$: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+                $bar: 'babar'
+                $foo: 'toto'
+                $public_ip: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+              template:
+                get_file: ../config-scripts/script-config.sh
+
           owner: root:root
           permissions: '0755'
 
