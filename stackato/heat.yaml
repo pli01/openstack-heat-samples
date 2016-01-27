@@ -90,6 +90,21 @@ resources:
       router_id: { get_resource: router1 }
       subnet_id: { get_resource: private_subnet }
 
+  server1_sg:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      name:
+        str_replace:
+          template:
+            $name-ext
+          params:
+            $name: { get_param: name }
+      rules:
+      - {direction: ingress, port_range_max: 22, port_range_min: 22, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
+      - {direction: ingress, port_range_max: 80, port_range_min: 80, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
+      - {direction: ingress, port_range_max: 443, port_range_min: 443, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
+      - {direction: ingress, protocol: icmp, remote_ip_prefix: 0.0.0.0/0}
+
   server1_port:
     type: OS::Neutron::Port
     properties:
@@ -97,15 +112,6 @@ resources:
       security_groups: [ get_resource: server1_sg ]
       fixed_ips:
         - subnet_id: { get_resource: private_subnet }
- 
-  server1_sg:
-    type: OS::Neutron::SecurityGroup
-    properties:
-      rules:
-      - {direction: ingress, port_range_max: 22, port_range_min: 22, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
-      - {direction: ingress, port_range_max: 80, port_range_min: 80, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
-      - {direction: ingress, port_range_max: 443, port_range_min: 443, protocol: tcp, remote_ip_prefix: 0.0.0.0/0}
-      - {direction: ingress, protocol: icmp, remote_ip_prefix: 0.0.0.0/0}
 
   server1_floating_ip:
     type: OS::Neutron::FloatingIP
@@ -116,7 +122,7 @@ resources:
   server1:
     type: OS::Nova::Server
     properties:
-      name: Server1
+      name: node
       image: { get_param: image_id }
       flavor: {get_param: flavor}
       key_name: {get_param: key_name}
@@ -124,14 +130,11 @@ resources:
         - port: { get_resource: server1_port }
       user_data_format: RAW
       user_data:
-       str_replace:
-          template: |
-            #!/bin/bash
-            echo "$floating_ip$" >> fip.txt
-            DEBIAN_FRONTEND=noninteractive apt-get -qqy update && DEBIAN_FRONTEND=noninteractive apt-get -qqy upgrade
-            DEBIAN_FRONTEND=noninteractive apt-get -qqy install apache2
+        str_replace:
+          template:
+            get_file: ../config-scripts/configure_stackato.sh
           params:
-            $floating_ip$: { get_attr: [server1_floating_ip, floating_ip_address] }
+            $public_ip: { get_attr: [server1_floating_ip, floating_ip_address] }
 
 outputs:
   server1_private_ip:

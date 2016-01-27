@@ -53,41 +53,34 @@ resources:
             image: { get_param: image }
             flavor: { get_param: flavor }
             networks: [{network: {get_param: network} }]
-#            security_groups: [{ get_resource: security_group }]
+            security_groups: [{ get_resource: security_group }]
             user_data_format: RAW
-            user_data: |
-              #!/bin/bash
-              set -x
-              export DEBIAN_FRONTEND=noninteractive
-              #apt-get -qqy update
-              #apt-get -qqy upgrade
-              apt-get -f -y -q install apache2
-              echo $(/sbin/ifconfig eth0 | grep 'inet addr' | awk -F: '{ print $2 }' | awk '{ print $1 }') >> /var/www/html/index.html
+            user_data:
+             get_file: ../config-scripts/script-config.sh
 
       min_size: 1
       desired_capacity: 2
       max_size: 3
 
-#  security_group:
-#    type: OS::Neutron::SecurityGroup
-#    properties:
-#      description: Add security group rules for server
-#      rules:
-#        - remote_ip_prefix: 0.0.0.0/0
-#          protocol: tcp
-#          port_range_min: 22
-#          port_range_max: 22
-#        - remote_ip_prefix: 0.0.0.0/0
-#          protocol: tcp
-#          port_range_min: 80
-#          port_range_max: 80
-#        - remote_ip_prefix: 0.0.0.0/0
-#          protocol: tcp
-#          port_range_min: 443
-#          port_range_max: 443
-#        - remote_ip_prefix: 0.0.0.0/0
-#          protocol: icmp
-#
+  security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: Add security group rules for server
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 80
+          port_range_max: 80
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 443
+          port_range_max: 443
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: icmp
 
   scale_up_policy:
     type: OS::Heat::ScalingPolicy

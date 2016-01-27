@@ -1,9 +1,9 @@
 parameters:
-  image_id: "Debian Jessie"
+  image_id: "Stackato-361"
   public_net: 6ea98324-0f14-49f6-97c0-885d1b8dc517
-  flavor: s1.cw.small-1
+  flavor: n1.cw.highcpu-2
   key_name: user1
-  name: dmz
+  name: stackato
   cidr: 192.168.10.0/24
   gateway_ip: 192.168.10.1
   allocation_pools:
