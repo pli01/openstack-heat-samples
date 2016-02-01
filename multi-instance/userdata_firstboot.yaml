@@ -1,0 +1,27 @@
+heat_template_version: 2014-10-16
+
+resources:
+  userdata:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: {get_resource: one_config}
+      - config: {get_resource: two_config}
+
+  one_config:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config: |
+        #!/bin/bash
+        echo "one" > /tmp/one
+
+  two_config:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config: |
+        #!/bin/bash
+        echo "two" > /tmp/two
+
+outputs:
+  userdata:
+    value: {get_resource: userdata}

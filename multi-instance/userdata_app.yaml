@@ -1,0 +1,38 @@
+heat_template_version: 2014-10-16
+
+# NOTE: You don't need to pass the parameter explicitly from the
+# parent template, it can be specified via the parameter_defaults
+# in the resource_registry instead, if you want to override the default
+# and/or share values with other templates in the tree.
+parameters:
+
+description: >
+  This is an example showing how you can do firstboot configuration
+
+resources:
+  userdata:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: {get_resource: install_app}
+        type: multipart
+
+  install_app:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+       str_replace:
+         params:
+           $foo: 'foofoo'
+           $bar: 'babar'
+#           $public_ip: { get_attr: [Instance1_floating_ip, floating_ip_address] }
+         template:
+           get_file: ../config-scripts/script-install-app.sh
+
+outputs:
+  # This means get_resource from the parent template will get the userdata, see:
+  # http://docs.openstack.org/developer/heat/template_guide/composition.html#making-your-template-resource-more-transparent
+  # Note this is new-for-kilo, an alternative is returning a value then using
+  # get_attr in the parent template instead.
+  userdata:
+    value: {get_resource: userdata}
