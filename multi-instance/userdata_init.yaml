@@ -1,0 +1,25 @@
+heat_template_version: 2014-10-16
+
+parameters:
+
+resources:
+  userdata:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: {get_resource: user_config}
+
+  user_config:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        merge_how: 'list(append)+dict(recurse_array)+str()'
+        preserve_hostname: true
+        manage_etc_hosts: false
+        bootcmd:
+          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
+          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
+
+outputs:
+  userdata:
+    value: {get_resource: userdata}
