@@ -36,7 +36,6 @@ resources:
   Instance1_security_group:
     type: OS::Neutron::SecurityGroup
     properties:
-      name: web_server_security_group
       description: Add security group rules for server
       rules:
         - remote_ip_prefix: 0.0.0.0/0

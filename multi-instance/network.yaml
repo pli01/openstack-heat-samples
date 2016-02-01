@@ -21,6 +21,16 @@ parameters:
     description: private subnet gateway ip
     default: 172.16.1.1
 
+  host_routes:
+    type: json
+    description: >
+        host routes
+        "destination": '0.0.0.0/0'
+        "nexthop": 172.16.1.1
+    default:
+        "destination": ''
+        "nexthop": ''
+
   allocation_pools:
     type: json
     description: private subnet pool start
@@ -61,6 +71,8 @@ resources:
       ip_version: { get_param: ip_version }
       cidr: { get_param: cidr }
       gateway_ip: { get_param: gateway_ip }
+      host_routes:
+        - { get_param: host_routes }
       enable_dhcp: { get_param: enable_dhcp }
       dns_nameservers: { get_param: dns_nameservers }
       allocation_pools:

@@ -14,8 +14,11 @@ resources:
     type: OS::Heat::MultipartMime
     properties:
       parts:
+      - config: {get_resource: user_config}
       - config: {get_resource: install_app}
-        type: multipart
+
+  user_config:
+    type: Lib::Stack::UserData::Init
 
   install_app:
     type: OS::Heat::SoftwareConfig

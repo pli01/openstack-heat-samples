@@ -9,6 +9,9 @@ parameters:
   dmz_name: dmz
   dmz_cidr: 192.168.100.0/24
   dmz_gateway_ip: 192.168.100.1
+  dmz_host_routes:
+    "destination": "0.0.0.0/0"
+    "nexthop": "192.168.100.1"
   dmz_allocation_pools:
     "start": "192.168.100.2"
     "end": "192.168.100.254"
@@ -19,6 +22,9 @@ parameters:
   app_name: app
   app_cidr: 192.168.120.0/24
   app_gateway_ip: 192.168.120.1
+  app_host_routes:
+    "destination": "0.0.0.0/0"
+    "nexthop": "192.168.120.1"
   app_allocation_pools:
     "start": "192.168.120.2"
     "end": "192.168.120.254"
@@ -29,6 +35,9 @@ parameters:
   db_name: db
   db_cidr: 192.168.130.0/24
   db_gateway_ip: 192.168.130.1
+  db_host_routes:
+    "destination": "0.0.0.0/0"
+    "nexthop": "192.168.130.1"
   db_allocation_pools:
     "start": "192.168.130.2"
     "end": "192.168.130.254"

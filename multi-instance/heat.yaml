@@ -31,6 +31,8 @@ parameters:
     type: string
   dmz_gateway_ip:
     type: string
+  dmz_host_routes:
+    type: json
   dmz_allocation_pools:
     type: json
   dmz_dns_nameservers:
@@ -46,6 +48,8 @@ parameters:
     type: string
   app_gateway_ip:
     type: string
+  app_host_routes:
+    type: json
   app_allocation_pools:
     type: json
   app_dns_nameservers:
@@ -61,6 +65,8 @@ parameters:
     type: string
   db_gateway_ip:
     type: string
+  db_host_routes:
+    type: json
   db_allocation_pools:
     type: json
   db_dns_nameservers:
@@ -69,7 +75,6 @@ parameters:
     type: string
   db_ip_version:
     type: number
-
 
 resources:
 
@@ -85,6 +90,7 @@ resources:
       name: { get_param: dmz_name }
       cidr: { get_param: dmz_cidr }
       gateway_ip: { get_param: dmz_gateway_ip }
+      host_routes: { get_param: dmz_host_routes }
       allocation_pools: { get_param: dmz_allocation_pools }
       enable_dhcp: { get_param: dmz_enable_dhcp }
       ip_version: { get_param: dmz_ip_version }
@@ -97,6 +103,7 @@ resources:
       name: { get_param: app_name }
       cidr: { get_param: app_cidr }
       gateway_ip: { get_param: app_gateway_ip }
+      host_routes: { get_param: app_host_routes }
       allocation_pools: { get_param: app_allocation_pools }
       enable_dhcp: { get_param: app_enable_dhcp }
       ip_version: { get_param: app_ip_version }
@@ -109,6 +116,7 @@ resources:
       name: { get_param: db_name }
       cidr: { get_param: db_cidr }
       gateway_ip: { get_param: db_gateway_ip }
+      host_routes: { get_param: db_host_routes }
       allocation_pools: { get_param: db_allocation_pools }
       enable_dhcp: { get_param: db_enable_dhcp }
       ip_version: { get_param: db_ip_version }
@@ -151,7 +159,12 @@ resources:
       user_data: { get_attr: [ install_app, userdata ] }
 
   install_app:
-    type: Lib::Stack::UserDataApp
+    type: Lib::Stack::UserDataDb
+    properties:
+      public_ip: ''
+      app_ip: 'toto'
+#      app_ip: { get_attr: [app1, first_address] }
+
 
 outputs:
   web1_public_ip:
