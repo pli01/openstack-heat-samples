@@ -9,6 +9,12 @@ parameters:
     type: string
   app_ip:
     type: string
+  _vars_:
+    type: json
+    default:
+      dbname: myapp
+      dbuser: django
+      dbpassword: mysupersecretpassword
 
 resources:
   userdata:
@@ -17,7 +23,6 @@ resources:
       parts:
       - config: {get_resource: user_config}
       - config: {get_resource: install_ansible}
-      - config: {get_resource: gen_ansible_mysql}
       - config: {get_resource: gen_ansible_playbook}
       - config: {get_resource: gen_ansible_hosts}
       - config: {get_resource: gen_ansible_vars}
@@ -54,23 +59,23 @@ resources:
         runcmd:
           - /root/install_ansible.sh
 
-  gen_ansible_mysql:
-    type: OS::Heat::CloudConfig
-    properties:
-      cloud_config:
-        merge_how: 'list(append)+dict(recurse_array)+str()'
-        write_files:
-        - path: /root/install_ansible_mysql.sh
-          content:
-            str_replace:
-              template:
-                get_file: ../config-scripts/script-install-ansible-mysql.sh
-              params:
-                $public_ip: { get_param: public_ip }
-          owner: root:root
-          permissions: '0755'
-        runcmd:
-          - /root/install_ansible_mysql.sh
+#  gen_ansible_mysql:
+#    type: OS::Heat::CloudConfig
+#    properties:
+#      cloud_config:
+#        merge_how: 'list(append)+dict(recurse_array)+str()'
+#        write_files:
+#        - path: /root/install_ansible_mysql.sh
+#          content:
+#            str_replace:
+#              template:
+#                get_file: ../config-scripts/script-install-ansible-mysql.sh
+#              params:
+#                $public_ip: { get_param: public_ip }
+#          owner: root:root
+#          permissions: '0755'
+#        runcmd:
+#          - /root/install_ansible_mysql.sh
 
   gen_ansible_playbook:
     type: OS::Heat::CloudConfig
@@ -82,11 +87,27 @@ resources:
           content:
             str_replace:
               template:
-                get_file: ../ansible/local.yaml
+                get_file: ../ansible/mysql.yaml
               params:
                 $public_ip: { get_param: public_ip }
           owner: root:root
           permissions: '0644'
+
+#  gen_ansible_vars:
+#    type: OS::Heat::CloudConfig
+#    properties:
+#      cloud_config:
+#        merge_how: 'list(append)+dict(recurse_array)+str()'
+#        write_files:
+#        - path: /root/ansible/vars.yaml
+#          content:
+#            str_replace:
+#              template:
+#                get_file: ../ansible/vars.yaml
+#              params:
+#                $public_ip: { get_param: public_ip }
+#          owner: root:root
+#          permissions: '0644'
 
   gen_ansible_vars:
     type: OS::Heat::CloudConfig
@@ -94,13 +115,18 @@ resources:
       cloud_config:
         merge_how: 'list(append)+dict(recurse_array)+str()'
         write_files:
-        - path: /root/ansible/group_vars/mysql.yaml
+        - path: /root/ansible/vars.yaml
           content:
             str_replace:
-              template:
-                get_file: ../ansible/group_vars/mysql.yaml
+              template: |
+                ---
+                dbname: $dbname
+                dbuser: $dbuser
+                dbpassword: $dbpassword
               params:
-                $public_ip: { get_param: public_ip }
+                $dbname: { get_param: [_vars_, dbname] }
+                $dbuser: { get_param: [_vars_, dbuser] }
+                $dbpassword: { get_param: [_vars_, dbpassword] }
           owner: root:root
           permissions: '0644'
 
