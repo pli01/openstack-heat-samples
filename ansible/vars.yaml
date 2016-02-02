@@ -1,0 +1,4 @@
+---
+dbname: myapp
+dbuser: django
+dbpassword: mysupersecretpassword
