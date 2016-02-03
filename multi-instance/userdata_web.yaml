@@ -15,20 +15,12 @@ resources:
     type: OS::Heat::MultipartMime
     properties:
       parts:
-      - config: {get_resource: user_config}
+      - config: {get_attr: [user_config, userdata]}
       - config: {get_resource: launch_config}
 #      - config: {get_resource: install_app}
 
   user_config:
-    type: OS::Heat::CloudConfig
-    properties:
-      cloud_config:
-        preserve_hostname: true
-        manage_etc_hosts: false
-
-        bootcmd:
-          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
-          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
+    type: Lib::Stack::UserData::Init
 
   launch_config:
     type: OS::Heat::CloudConfig

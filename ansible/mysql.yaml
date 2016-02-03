@@ -11,6 +11,10 @@
         - mysql-common
         - mysql-server
         - python-mysqldb
+  - name: Modify configuration file to listen on all interfaces
+    lineinfile: dest=/etc/mysql/my.cnf regexp="^bind-address" line="bind-address=0.0.0.0"
+  - name: ensure mysql is running
+    service: name=mysql state=running enabled=yes
 
 - hosts: mysqlserver
   gather_facts: yes
@@ -19,12 +23,9 @@
   - name: ensure database is created
     mysql_db: name={{dbname}} state=present
 
-  - name: ensure mysql is running
-    service: name=mysql state=running enabled=yes
-
   - name: delete all user
     mysql_user: name={{dbuser}} state=absent
 
   - name: ensure user has access to database
-    mysql_user: name={{dbuser}} password={{dbpassword}} priv={{dbname}}.*:ALL host='%'
+    mysql_user: name={{dbuser}} password={{dbpassword}} priv={{dbname}}.*:ALL host="%"
 

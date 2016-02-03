@@ -14,7 +14,7 @@ resources:
     type: OS::Heat::MultipartMime
     properties:
       parts:
-      - config: {get_resource: user_config}
+      - config: {get_attr: [user_config, userdata]}
       - config: {get_resource: install_app}
 
   user_config:

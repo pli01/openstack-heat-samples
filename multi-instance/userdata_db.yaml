@@ -17,11 +17,25 @@ parameters:
       dbpassword: mysupersecretpassword
 
 resources:
+
+  MysqlUserPassword:
+    type: OS::Heat::RandomString
+    properties:
+      length: 10
+  MysqlUserName:
+    type: OS::Heat::RandomString
+    properties:
+      length: 10
+  MysqlUserDb:
+    type: OS::Heat::RandomString
+    properties:
+      length: 10
+
   userdata:
     type: OS::Heat::MultipartMime
     properties:
       parts:
-      - config: {get_resource: user_config}
+      - config: {get_attr: [user_config,userdata]}
       - config: {get_resource: install_ansible}
       - config: {get_resource: gen_ansible_playbook}
       - config: {get_resource: gen_ansible_hosts}
@@ -31,15 +45,6 @@ resources:
 
   user_config:
     type: Lib::Stack::UserData::Init
-#
-#    type: OS::Heat::CloudConfig
-#    properties:
-#      cloud_config:
-#        preserve_hostname: true
-#        manage_etc_hosts: false
-#        bootcmd:
-#          - cloud-init-per instance my_set_hostname sh -xc "wget -O - -q http://169.254.169.254/latest/meta-data/local-hostname > /etc/hostname ; hostname -F /etc/hostname"
-#          - cloud-init-per instance my_set_hosts sh -xc "sed -i -e '/^127.0.1.1/d' /etc/hosts;  ( echo -n '127.0.1.1 ' ; cat /etc/hostname; echo ) >> /etc/hosts"
 
   install_ansible:
     type: OS::Heat::CloudConfig
@@ -124,9 +129,11 @@ resources:
                 dbuser: $dbuser
                 dbpassword: $dbpassword
               params:
-                $dbname: { get_param: [_vars_, dbname] }
-                $dbuser: { get_param: [_vars_, dbuser] }
-                $dbpassword: { get_param: [_vars_, dbpassword] }
+#                $dbname: { get_param: [_vars_, dbname] }
+#                $dbuser: { get_param: [_vars_, dbuser] }
+                $dbname: {get_attr: [MysqlUserDb, value]}
+                $dbuser: {get_attr: [MysqlUserName, value]}
+                $dbpassword: {get_attr: [MysqlUserPassword, value]}
           owner: root:root
           permissions: '0644'
 

@@ -56,5 +56,5 @@ outputs:
   # http://docs.openstack.org/developer/heat/template_guide/composition.html#making-your-template-resource-more-transparent
   # Note this is new-for-kilo, an alternative is returning a value then using
   # get_attr in the parent template instead.
-  OS::stack_id:
+  userdata:
     value: {get_resource: userdata}
