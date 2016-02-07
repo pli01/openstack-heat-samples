@@ -1,0 +1,19 @@
+parameters:
+  public_net: 6ea98324-0f14-49f6-97c0-885d1b8dc517
+  key_name: user1
+  web_image: "Debian Jessie"
+  web_flavor: n1.cw.highcpu-2
+# DMZ
+  dmz_name: dmz
+  dmz_cidr: 192.168.100.0/24
+  dmz_gateway_ip: 192.168.100.1
+  dmz_host_routes:
+    "destination": "0.0.0.0/0"
+    "nexthop": "192.168.100.1"
+  dmz_allocation_pools:
+    "start": "192.168.100.2"
+    "end": "192.168.100.254"
+  dmz_enable_dhcp: 'True'
+  dmz_ip_version: 4
+  dmz_dns_nameservers: [ '8.8.8.8' ]
+
