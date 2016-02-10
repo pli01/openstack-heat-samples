@@ -1,0 +1,28 @@
+---
+- hosts: localhost
+  gather_facts: no
+
+  tasks:
+  - name: ensure apt cache is up to date
+    apt: update_cache=yes
+  - name: ensure packages are installed
+    apt: name={{item}}
+    with_items:
+        - php5-fpm
+        - php5-mysql
+  - name: ensure php5-fpm is running
+    service: name=php5-fpm state=restarted enabled=yes
+
+- hosts: localhost
+  gather_facts: yes
+
+  tasks:
+#  - name: ensure database is created
+#    mysql_db: name={{dbname}} state=present
+#
+#  - name: delete all user
+#    mysql_user: name={{dbuser}} state=absent
+#
+#  - name: ensure user has access to database
+#    mysql_user: name={{dbuser}} password={{dbpassword}} priv={{dbname}}.*:ALL host="%"
+#
