@@ -37,7 +37,7 @@
       apt_key: url="{{ os_image_factory.jenkins.repo_key }}" state=present
 
     - name: jenkins apt server is known
-      apt_repository: repo="{{ os_image_factory.jenkins.repository }}" state=present
+      apt_repository: repo="{{ os_image_factory.jenkins.repository }}" state=present update_cache=yes
 
     - name: needed packages installed
       apt: update_cache=yes pkg="{{ item }}" state=present
@@ -48,6 +48,12 @@
         - libssl-dev
         - jenkins
         - unzip
+        - curl
+        - openjdk-7-jre
+        - openjdk-7-jdk
+
+    - name: Installation Jenkins
+      apt: name=jenkins state=latest
 
     - name: jenkins service is up
       service: name=jenkins state=restarted enabled=yes
