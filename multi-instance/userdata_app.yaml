@@ -5,32 +5,111 @@ heat_template_version: 2014-10-16
 # in the resource_registry instead, if you want to override the default
 # and/or share values with other templates in the tree.
 parameters:
+  public_ip:
+    type: string
+    default: ""
+  app_ip:
+    type: string
+    default: ""
 
-description: >
-  This is an example showing how you can do firstboot configuration
+  MysqlUserDb:
+    type: string
+    default: ""
+  MysqlUserName:
+    type: string
+    default: ""
+  MysqlUserPassword:
+    type: string
+    default: ""
+
+  _vars_:
+    type: json
+    default:
+      dbname: myapp
+      dbuser: django
+      dbpassword: mysupersecretpassword
 
 resources:
+
   userdata:
     type: OS::Heat::MultipartMime
     properties:
       parts:
-      - config: {get_attr: [user_config, userdata]}
-      - config: {get_resource: install_app}
+      - config: {get_attr: [user_config,userdata]}
+      - config: {get_resource: install_ansible}
+      - config: {get_resource: gen_ansible_playbook}
+      - config: {get_resource: gen_ansible_vars}
+      - config: {get_resource: gen_run_ansible}
 
   user_config:
     type: Lib::Stack::UserData::Init
 
-  install_app:
-    type: OS::Heat::SoftwareConfig
+  install_ansible:
+    type: OS::Heat::CloudConfig
     properties:
-      config:
-       str_replace:
-         params:
-           $foo: 'foofoo'
-           $bar: 'babar'
-#           $public_ip: { get_attr: [Instance1_floating_ip, floating_ip_address] }
-         template:
-           get_file: ../config-scripts/script-install-app.sh
+      cloud_config:
+        merge_how: 'list(append)+dict(recurse_array)+str()'
+        write_files:
+        - path: /root/install_ansible.sh
+          content:
+            get_file: ../config-scripts/script-install-ansible.sh
+          owner: root:root
+          permissions: '0755'
+        runcmd:
+          - /root/install_ansible.sh
+
+  gen_ansible_playbook:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        merge_how: 'list(append)+dict(recurse_array)+str()'
+        write_files:
+        - path: /root/ansible/local.yaml
+          content:
+            get_file: ../ansible/php-fpm.yaml
+          owner: root:root
+          permissions: '0644'
+
+  gen_ansible_vars:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        merge_how: 'list(append)+dict(recurse_array)+str()'
+        write_files:
+        - path: /root/ansible/vars.yaml
+          content:
+            str_replace:
+              template: |
+                ---
+                dbname: $dbname
+                dbuser: $dbuser
+                dbpassword: $dbpassword
+              params:
+#                $dbname: { get_param: [_vars_, dbname] }
+#                $dbuser: { get_param: [_vars_, dbuser] }
+#                $dbpassword: { get_param: [_vars_, dbpassword] }
+#                $dbname: {get_attr: [MysqlUserDb, value]}
+#                $dbuser: {get_attr: [MysqlUserName, value]}
+#                $dbpassword: {get_attr: [MysqlUserPassword, value]}
+                $dbname: {get_param: MysqlUserDb}
+                $dbuser: {get_param: MysqlUserName}
+                $dbpassword: {get_param: MysqlUserPassword}
+          owner: root:root
+          permissions: '0644'
+
+  gen_run_ansible:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        merge_how: 'list(append)+dict(recurse_array)+str()'
+        write_files:
+        - path: /root/run_ansible.sh
+          content:
+            get_file: ../config-scripts/script-run-ansible.sh
+          owner: root:root
+          permissions: '0755'
+        runcmd:
+          - /root/run_ansible.sh
 
 outputs:
   # This means get_resource from the parent template will get the userdata, see:

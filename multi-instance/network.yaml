@@ -28,8 +28,8 @@ parameters:
         "destination": '0.0.0.0/0'
         "nexthop": 172.16.1.1
     default:
-        "destination": ''
-        "nexthop": ''
+        "destination": ""
+        "nexthop": ""
 
   allocation_pools:
     type: json

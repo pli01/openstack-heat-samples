@@ -31,6 +31,10 @@ parameters:
     description: ID of private sub network into which servers get deployed
   user_data:
     type: string
+  metadata:
+    type: json
+    default:
+      var: ""
 
 resources:
   Instance1_security_group:
@@ -80,6 +84,7 @@ resources:
          - port: { get_resource: Instance1_port }
        user_data_format: RAW
        user_data: { get_param: user_data }
+       metadata: { get_param: metadata }
 
 outputs:
   first_address:

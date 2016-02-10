@@ -35,6 +35,10 @@ parameters:
     description: ID of private sub network into which servers get deployed
   user_data:
     type: string
+  metadata:
+    type: json
+    default:
+      var: ""
 
 resources:
   Instance1_Server:
@@ -49,6 +53,7 @@ resources:
       private_net_id: { get_param: private_net_id }
       private_subnet_id: { get_param: private_subnet_id }
       user_data: { get_param: user_data }
+      metadata: { get_param: metadata }
 
   Instance1_floating_ip:
     type: OS::Neutron::FloatingIP
