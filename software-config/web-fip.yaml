@@ -1,0 +1,86 @@
+heat_template_version: 2014-10-16
+
+description: >
+  Generic template 1 VM with boot on volume
+  1 server front with SSH/HTTP/HTTPS open
+
+parameters:
+
+  key_name:
+    type: string
+    description: Name of keypair to assign to servers
+
+  instance1_image:
+    type: string
+    description: Name of image to use for instance1 server
+  instance1_flavor:
+    type: string
+    description: Flavor to use for instance1 server
+#  instance1_vol_size:
+#    type: number
+#    description: The size of the Cinder volume for instance1 server
+#  instance1_vol_type:
+#    type: string
+#    description: The volume type of the Cinder volume for instance1 server
+#
+  public_net_id:
+    type: string
+    description: >
+      ID of public network for which floating IP addresses will be allocated
+  private_net_id:
+    type: string
+    description: ID of private network into which servers get deployed
+  private_subnet_id:
+    type: string
+    description: ID of private sub network into which servers get deployed
+  user_data:
+    type: string
+
+resources:
+  Instance1_Server:
+    type: Lib::Stack::Server
+    properties:
+      key_name: { get_param: key_name }
+      instance1_flavor: { get_param: instance1_flavor }
+      instance1_image: { get_param: instance1_image }
+#      instance1_vol_size: { get_param: web_vol_size }
+#      instance1_vol_type: { get_param: web_vol_type }
+#      public_net_id: { get_param: public_net }
+      private_net_id: { get_param: private_net_id }
+      private_subnet_id: { get_param: private_subnet_id }
+      user_data: { get_param: user_data }
+
+  Instance1_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net_id }
+      port_id: { get_attr: [Instance1_Server, port_id] }
+
+outputs:
+  first_address:
+    description: Instance1 private IP address
+    value: { get_attr: [ Instance1_Server, first_address ] }
+  floating_ip_address:
+    description: Instance1 public IP address
+    value: { get_attr: [ Instance1_floating_ip, floating_ip_address ] }
+  id:
+    description: Instance1 nova ressource id
+    value: { get_attr: [ Instance1_Server, id ] }
+  server_id:
+    description: Instance1 nova ressource id
+    value: { get_resource: Instance1_Server }
+  port_id:
+    description: Instance1 port id
+    value: { get_attr: [ Instance1_Server, port_id ] }
+  security_group_id:
+    description: Instance1 security id
+    value: { get_attr: [ Instance1_Server, security_group_id ] }
+##  Instance1_root_vol_id:
+##    description: Instance1 cinder volume id
+##    value: { get_resource: Instance1_root_vol }
+  Instance1_floating_ip_id:
+    description: Instance1 floating ip id
+    value: { get_resource: Instance1_floating_ip }
+#  Bucket_domain:
+#    description: "Domain of Swift host"
+#    value: { get_attr: [SwiftContainer, DomainName] }

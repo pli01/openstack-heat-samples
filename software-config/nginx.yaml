@@ -1,0 +1,52 @@
+heat_template_version: 2014-10-16
+
+description: |
+  Deploy Nginx server with Ansible
+
+parameters:
+
+  server:
+    type: string
+
+resources:
+
+  nginx_config:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ansible
+      config: |
+        ---
+        - name: Install and run Nginx
+          connection: local
+          hosts: localhost
+          tasks:
+           - name: Install Nginx
+             apt: pkg=nginx state=installed update_cache=true
+             notify:
+              - Start Nginx
+          handlers:
+           - name: Start Nginx
+             service: name=nginx state=started
+
+  deploy_nginx:
+    type: OS::Heat::SoftwareDeployment
+    properties:
+      signal_transport: NO_SIGNAL
+      config:
+        get_resource: nginx_config
+      server:
+        get_param: server
+
+outputs:
+  stdout:
+    description: Ansible Output
+    value:
+      get_attr: [ deploy_nginx, deploy_stdout ]
+  stderr:
+    description: Ansible Error Output
+    value:
+      get_attr: [ deploy_nginx, deploy_stderr ]
+  status_code:
+    description: Exit Code
+    value:
+      get_attr: [ deploy_nginx, deploy_status_code ]

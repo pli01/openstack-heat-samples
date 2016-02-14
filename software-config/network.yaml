@@ -1,0 +1,100 @@
+heat_template_version: 2013-05-23
+description: HOT template to create private net, subnet, cidr, gateway only
+
+parameters:
+  name:
+    type: string
+    description: private net name
+    default: private
+
+  router_id:
+    type: string
+    description: router id
+
+  cidr:
+    type: string
+    description: private subnet cidr
+    default: 172.16.1.0/24
+
+  gateway_ip:
+    type: string
+    description: private subnet gateway ip
+    default: 172.16.1.1
+
+  host_routes:
+    type: json
+    description: >
+        host routes
+        "destination": '0.0.0.0/0'
+        "nexthop": 172.16.1.1
+    default:
+        "destination": ''
+        "nexthop": ''
+
+  allocation_pools:
+    type: json
+    description: private subnet pool start
+    default:
+        "start": "172.16.1.100"
+        "end": "172.16.1.200"
+
+  dns_nameservers:
+    type: comma_delimited_list
+    description: private subnet pool end
+    default: '8.8.8.8'
+
+  enable_dhcp:
+    type: string
+    description: private subnet cidr
+    default: 'True'
+
+  ip_version:
+    type: number
+    description: private subnet cidr
+    default: 4
+
+resources:
+  private_net:
+    type: OS::Neutron::Net
+    properties:
+      name:
+        str_replace:
+           template:
+              $subnet-subnet
+           params:
+              $subnet: { get_param: name }
+
+  private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: private_net }
+      ip_version: { get_param: ip_version }
+      cidr: { get_param: cidr }
+      gateway_ip: { get_param: gateway_ip }
+      host_routes:
+        - { get_param: host_routes }
+      enable_dhcp: { get_param: enable_dhcp }
+      dns_nameservers: { get_param: dns_nameservers }
+      allocation_pools:
+        - { get_param: allocation_pools }
+
+  private_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_param: router_id }
+      subnet_id: { get_resource: private_subnet }
+
+outputs:
+  network_name:
+    description: Name of the network
+    value: { get_attr: [private_net, name] }
+  interface_id:
+    description: Router interface id
+    value: { get_resource: private_interface }
+  subnet_id:
+    description: Private subnet id
+    value: { get_resource: private_subnet }
+  net_id:
+    description: Private net id
+    value: { get_resource: private_net }
+
