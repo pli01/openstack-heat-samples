@@ -4,11 +4,11 @@ parameters:
   flavor: s1.cw.small-1
   key_name: user1
   name: dmz
-  cidr: 192.168.10.0/24
-  gateway_ip: 192.168.10.1
+  cidr: 192.168.20.0/24
+  gateway_ip: 192.168.20.1
   allocation_pools:
-    "start": "192.168.10.100"
-    "end": "192.168.10.200"
+    "start": "192.168.20.100"
+    "end": "192.168.20.200"
   enable_dhcp: 'True'
   ip_version: 4
   dns_nameservers: [ '8.8.8.8' ]
