@@ -164,7 +164,7 @@
 
     - name: install jenkins git plugin and update all installed plugins
       when: jenkins_plugins.stdout
-      shell: "java -jar /root/jenkins-cli.jar -s {{ os_image_factory.jenkins.local_url }} install-plugin {{ jenkins_plugins.stdout }} git-client git"
+      shell: "java -jar /root/jenkins-cli.jar -s {{ os_image_factory.jenkins.local_url }} install-plugin {{ jenkins_plugins.stdout }} git-client git swarm"
 
     - name: safe-restart jenkins to apply plugins updates
       shell: "java -jar /root/jenkins-cli.jar -s {{ os_image_factory.jenkins.local_url }} safe-restart"
