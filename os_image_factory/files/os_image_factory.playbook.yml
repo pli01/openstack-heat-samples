@@ -168,3 +168,11 @@
 
     - name: safe-restart jenkins to apply plugins updates
       shell: "java -jar /root/jenkins-cli.jar -s {{ os_image_factory.jenkins.local_url }} safe-restart"
+
+    - name: Installation nginx
+      apt: name=nginx state=latest
+
+    - name: nginx service is up
+      service: name=nginx state=restarted enabled=yes
+
+
