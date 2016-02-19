@@ -1,0 +1,8 @@
+TODO: 
+master jenkins:
+slaveAgentPort 8081 dans config.xml
+security group 8081
+
+slave:
+ init 
+ home et user jenkins

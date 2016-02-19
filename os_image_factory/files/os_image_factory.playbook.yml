@@ -18,6 +18,27 @@
         repo_key: "http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key"
 
   tasks:
+    - name: Installation nginx
+      apt: name=nginx state=latest
+
+    - name: write nginx.conf
+      template: src=templates/nginx.jenkins.conf.j2 dest=/etc/nginx/sites-available/jenkins
+      notify:
+        - restart nginx
+
+    - name: link nginx "jenkins" vhost in sites-enabled
+      file: src=/etc/nginx/sites-available/jenkins dest=/etc/nginx/sites-enabled/jenkins state=link
+      notify:
+        - restart nginx
+
+    - name: delete default vhost
+      file: path=/etc/nginx/sites-enabled/default state=absent
+      notify:
+        - restart nginx
+
+    - name: nginx service is up
+      service: name=nginx state=restarted enabled=yes
+
     - name: toolkit packages present
       apt: pkg="{{ item }}" state=present
       with_items:
@@ -169,10 +190,6 @@
     - name: safe-restart jenkins to apply plugins updates
       shell: "java -jar /root/jenkins-cli.jar -s {{ os_image_factory.jenkins.local_url }} safe-restart"
 
-    - name: Installation nginx
-      apt: name=nginx state=latest
-
-    - name: nginx service is up
+  handlers:
+    - name: restart nginx
       service: name=nginx state=restarted enabled=yes
-
-

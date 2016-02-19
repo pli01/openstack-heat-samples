@@ -14,34 +14,27 @@ resources:
     properties:
       parts:
       - config: {get_attr: [user_config,userdata]}
-      - config: {get_resource: install_ansible}
+      - config: {get_resource: get_jenkins}
+      - config: {get_resource: run_jenkins}
 
   user_config:
     type: Lib::Stack::UserData::Init
 
-  install_ansible:
-    type: OS::Heat::CloudConfig
+  get_jenkins:
+    type: OS::Heat::SoftwareConfig
     properties:
-      cloud_config:
-        merge_how: 'list(append)+dict(recurse_array)+str()'
-        write_files:
-        - path: /root/get_jenkins_slave.sh
-          permissions: '0755'
-          owner: root:root
-          content:
-            get_file: ./files/get_jenkins_slave.sh
-        - path: /root/run_jenkins_slave.sh
-          owner: root:root
-          permissions: '0755'
-          content:
-            str_replace:
-              params:
-                $master_jenkins: { get_param: master_jenkins }
-              template:
-                get_file: ./files/run_jenkins_slave.sh
-        runcmd:
-          - /root/get_jenkins_slave.sh
-          - /root/run_jenkins_slave.sh
+      config:
+        get_file: ./files/get_jenkins_slave.sh
+
+  run_jenkins:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+        str_replace:
+          params:
+            $master_jenkins: { get_param: master_jenkins }
+          template:
+            get_file: ./files/run_jenkins_slave.sh
 
 outputs:
   # This means get_resource from the parent template will get the userdata, see:
