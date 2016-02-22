@@ -76,6 +76,11 @@
     - name: Installation Jenkins
       apt: name=jenkins state=latest
 
+    - name: Configure jenkins
+      template: src=templates/config.xml dest=/var/lib/jenkins/config.xml owner=jenkins
+      notify:
+        - restart jenkins
+
     - name: jenkins service is up
       service: name=jenkins state=restarted enabled=yes
 
@@ -117,6 +122,7 @@
         url="{{ os_image_factory.packer.zip_url }}"
         dest=/tmp/packer.zip
         force=no
+        validate_certs=False
 
     - name: packer destination directory is ready
       when: need_to_install_packer
@@ -193,3 +199,6 @@
   handlers:
     - name: restart nginx
       service: name=nginx state=restarted enabled=yes
+
+    - name: restart jenkins
+      service: name=jenkins state=restarted enabled=yes

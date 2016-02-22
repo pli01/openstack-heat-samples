@@ -4,6 +4,9 @@ set -x
 export PATH=/usr/local/bin:$PATH
 export DEBIAN_FRONTEND=noninteractive
 
+# durty fix waiting network comming up
+while ! curl -q -o /dev/null http://http.debian.net/ ; do sleep 2 ; done
+
 apt-get -qqy update
 apt-get -qqy -o Dpkg::Options::="--force-confold" upgrade
 apt-get -o Dpkg::Options::="--force-confold" remove python-pip --purge -y
@@ -20,4 +23,3 @@ pip install -U pip ansible
 test -d /etc/ansible || mkdir /etc/ansible
 echo -e "[local]\n127.0.0.1 ansible_connection=local ansible_ssh_user=cloud" > /etc/ansible/hosts
 
-#/usr/local/bin/ansible-playbook /root/os_image_factory/setup/os_image_factory.playbook.yml -vv > /var/log/os_image_factory.setup.log 2>&1

@@ -40,6 +40,11 @@ resources:
           permissions: '0644'
           content:
             get_file: ./files/os_image_factory.playbook.yml
+        - path: /root/os_image_factory/setup/templates/config.xml
+          owner: root:root
+          permissions: '0644'
+          content:
+            get_file: ./files/jenkins.config.xml
         - path: /root/os_image_factory/setup/templates/nginx.jenkins.conf.j2
           owner: root:root
           permissions: '0644'
