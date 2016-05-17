@@ -55,6 +55,16 @@ parameters:
     description: private subnet cidr
     default: 4
 
+  vol_size:
+    type: number
+    description: The size of the Cinder volume for instance1 server
+    default: 10
+
+  vol_type:
+    type: string
+    description: The volume type of the Cinder volume for instance1 server
+    default: bronze
+
 resources:
   router1:
     type: OS::Neutron::Router
@@ -73,6 +83,7 @@ resources:
               $subnet: { get_param: name }
      
   private_subnet:
+    depends_on: [ private_net ]
     type: OS::Neutron::Subnet
     properties:
       network_id: { get_resource: private_net }
@@ -85,12 +96,14 @@ resources:
         - { get_param: allocation_pools }
 
   router1_interface:
+    depends_on: [ private_net, router1 ]
     type: OS::Neutron::RouterInterface
     properties:
       router_id: { get_resource: router1 }
       subnet_id: { get_resource: private_subnet }
 
   server1_port:
+    depends_on: [ private_net, server1_sg ]
     type: OS::Neutron::Port
     properties:
       network_id: { get_resource: private_net }
@@ -113,11 +126,20 @@ resources:
       floating_network_id: { get_param: public_net }
       port_id: { get_resource: server1_port }
 
+  Instance1_root_vol:
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: vol_size }
+      image: { get_param: image_id }
+      volume_type: { get_param: vol_type }
+
   server1:
+    depends_on: [ server1_port, Instance1_root_vol ]
     type: OS::Nova::Server
     properties:
-      name: Server1
-      image: { get_param: image_id }
+#      name: Server1
+      block_device_mapping: [{ device_name: "vda", volume_id : { get_resource : Instance1_root_vol }, delete_on_termination : "true" }]
+      # image: { get_param: image_id }
       flavor: {get_param: flavor}
       key_name: {get_param: key_name}
       networks:
@@ -128,7 +150,8 @@ resources:
           template: |
             #!/bin/bash
             echo "$floating_ip$" >> fip.txt
-            DEBIAN_FRONTEND=noninteractive apt-get -qqy update && DEBIAN_FRONTEND=noninteractive apt-get -qqy upgrade
+            DEBIAN_FRONTEND=noninteractive apt-get -qqy update
+            # DEBIAN_FRONTEND=noninteractive apt-get -qqy upgrade
             DEBIAN_FRONTEND=noninteractive apt-get -qqy install apache2
           params:
             $floating_ip$: { get_attr: [server1_floating_ip, floating_ip_address] }
