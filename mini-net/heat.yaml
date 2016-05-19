@@ -78,7 +78,7 @@ parameters:
   vol_type:
     type: string
     description: The volume type of the Cinder volume for instance1 server
-    default: bronze
+    default: standard
 
 resources:
   router1:
