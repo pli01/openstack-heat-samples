@@ -33,6 +33,16 @@ parameters:
     description: private subnet cidr
     default: 172.16.1.0/24
 
+  host_routes:
+    type: json
+    description: >
+        host routes
+        "destination": '0.0.0.0/0'
+        "nexthop": 172.16.1.1
+    default:
+        "destination": ''
+        "nexthop": ''
+
   gateway_ip:
     type: string
     description: private subnet gateway ip
@@ -95,6 +105,8 @@ resources:
       ip_version: { get_param: ip_version }
       cidr: { get_param: cidr }
       gateway_ip: { get_param: gateway_ip }
+      host_routes:
+        - { get_param: host_routes }
       enable_dhcp: { get_param: enable_dhcp }
       dns_nameservers: { get_param: dns_nameservers }
       allocation_pools:
@@ -154,6 +166,7 @@ resources:
        str_replace:
           template: |
             #!/bin/bash
+            while ! curl -q -o /dev/null http://http.debian.net/ ; do sleep 2 ; done
             echo "$floating_ip$" >> fip.txt
             cat <<EOF > /etc/apt/sources.list
             # # Debian Jessie (amd64)

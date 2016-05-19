@@ -3,13 +3,16 @@ parameters:
   public_net: 6ea98324-0f14-49f6-97c0-885d1b8dc517
   flavor: s1.cw.small-1
   key_name: user1
-  name: dmz
+  name: mi_dmz
   cidr: 192.168.20.0/24
   gateway_ip: 192.168.20.1
+  host_routes:
+    "destination": "0.0.0.0/0"
+    "nexthop": "192.168.20.1"
   allocation_pools:
     "start": "192.168.20.100"
     "end": "192.168.20.200"
   enable_dhcp: 'True'
   ip_version: 4
-  dns_nameservers: [ '8.8.8.8' ]
+  dns_nameservers: [ '8.8.8.8', '8.8.4.4' ]
 
