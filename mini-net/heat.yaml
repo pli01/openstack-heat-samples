@@ -166,7 +166,6 @@ resources:
        str_replace:
           template: |
             #!/bin/bash
-            while ! curl -q -o /dev/null http://http.debian.net/ ; do sleep 2 ; done
             echo "$floating_ip$" >> fip.txt
             cat <<EOF > /etc/apt/sources.list
             # # Debian Jessie (amd64)
