@@ -18,6 +18,11 @@ parameters:
     type: string
     description: public network id
 
+  mirror:
+    type: string
+    description: debian mirror url
+    default: http://ftp.fr.debian.org/debian/
+
   name:
     type: string
     description: private net name
@@ -150,11 +155,18 @@ resources:
           template: |
             #!/bin/bash
             echo "$floating_ip$" >> fip.txt
+            cat <<EOF > /etc/apt/sources.list
+            # # Debian Jessie (amd64)
+            deb $mirror$ jessie main contrib non-free
+            deb $mirror$ jessie-backports main contrib non-free
+            deb $mirror$ jessie-updates main contrib non-free
+            EOF
             DEBIAN_FRONTEND=noninteractive apt-get -qqy update
             # DEBIAN_FRONTEND=noninteractive apt-get -qqy upgrade
             DEBIAN_FRONTEND=noninteractive apt-get -qqy install apache2
           params:
             $floating_ip$: { get_attr: [server1_floating_ip, floating_ip_address] }
+            $mirror$: { get_param: mirror }
 
 outputs:
   server1_private_ip:
