@@ -15,6 +15,7 @@ dpkg -l docker-engine || apt-get -qqy install docker-engine
 if [ ! -f /etc/systemd/system/docker.service.d/http-proxy.conf ] ; then
  [ -d /etc/systemd/system/docker.service.d ] || mkdir /etc/systemd/system/docker.service.d
  cat <<EOF > /etc/systemd/system/docker.service.d/http-proxy.conf
+[Service]
 Environment="HTTP_PROXY=http://localhost:8888/" "NO_PROXY=localhost,127.0.0.1"
 EOF
  systemctl daemon-reload
