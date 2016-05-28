@@ -15,4 +15,5 @@ parameters:
   enable_dhcp: 'True'
   ip_version: 4
   dns_nameservers: [ '8.8.8.8', '8.8.4.4' ]
+  vol_size: 20
 
